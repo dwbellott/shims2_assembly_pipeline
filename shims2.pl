@@ -85,7 +85,6 @@ BEGIN {
 
 
 	$bowtie2_screen_params = "--very-sensitive-local --n-ceil L,0,1 -I 0 -X 2501";
-	#$cutadapt_params = "--mask-adapter --quiet --match-read-wildcards -q 10 --minimum-length 150";
 	$cutadapt_params = "--mask-adapter --quiet --match-read-wildcards -q 10 --minimum-length 22";
 	$adapter_default = "AGATCGGAAGAGC";
 	$phix_def = "gi|216019|gb|J02482.1|PX1CG";
@@ -204,9 +203,9 @@ sub main() {
 		$keeptemp = 1;
 	}
 	($spades_exec, $executables) = check_executable($spades, $spades_default, $executables);
-	($samtools_exec, $executables) = check_executable($samtools, $samtools_default, $executables);	
+	($samtools_exec, $executables) = check_executable($samtools, $samtools_default, $executables);
 	($bowtie2build_exec, $executables) = check_executable($bowtie2build, $bowtie2build_default, $executables);
-	($bowtie2_exec, $executables) = check_executable($bowtie2, $bowtie2_default, $executables);	
+	($bowtie2_exec, $executables) = check_executable($bowtie2, $bowtie2_default, $executables);
 	($blat_exec, $executables) = check_executable($blat, $blat_default, $executables);
 	($velveth_exec, $executables) = check_executable($velveth, $velveth_default, $executables);
 	($velvetg_exec, $executables) = check_executable($velvetg, $velvetg_default, $executables);
@@ -232,7 +231,7 @@ sub main() {
 			my $up = shift(@ups);
 			my $down = shift(@downs);
 			if (-e $up && -e $down){
-				
+
 			}elsif (-e $up){
 				$mates_warning .= "\t\t$down\n";
 			}elsif (-e $down){
@@ -272,12 +271,12 @@ sub main() {
 				$mates_warning .= "$output_dir is not a directory\n";
 			}
 		}else{
-			$mates_warning .= "creating directory $output_dir\n";		
+			$mates_warning .= "creating directory $output_dir\n";
 			mkdir abs_path($output_dir);
 		}
 	}else{
 		$help = 1;
-		$mates_warning .= "No output directory specified!\n"	
+		$mates_warning .= "No output directory specified!\n"
 	}
 	if ($mates_warning){
 		warn $mates_warning;
@@ -292,16 +291,21 @@ sub main() {
 		usage();
 		exit -1;
 	}
-	
+
 	if ($version){
 		version();
 		exit -1;
 	}
 
+	#ready to go!
+
 	my @uorig = @upstream_mates;
 	my @dorig = @downstream_mates;
 
 	push(@adapter, $adapter_default);
+
+
+	#perform adatper and quality trimming
 
 	if (@adapter){
 		@adapter = split(/,/,join(',',@adapter));
@@ -317,6 +321,9 @@ sub main() {
 
 	my @utrimmed = @upstream_mates;
 	my @dtrimmed = @downstream_mates;
+
+	#screen out reads matching host strain; calculate average library fragment size and standard deviation, average read length
+
 	my ($avg_frag, $std_frag, $avg_read, $cutoff) = ();
 
 	if (defined($host)){
@@ -328,6 +335,8 @@ sub main() {
 		($avg_frag, $std_frag, $avg_read) = ($f, $s, $r);
 		print "Average fragment size: $avg_frag\nStandard Deviation: $std_frag\nAverage Read: $avg_read\n";
 	}
+
+	#screen out reads matching vector; caluculate average fold coverage
 
 	my $cov_cutoff;
 
@@ -349,19 +358,22 @@ sub main() {
 		print "predicted coverage: $cov_cutoff\n";
 	}
 
+	#decide whether to run flash to merge paired reads -- do many pairs overlap?
+
 	if ($avg_frag > 0 && $avg_frag - $std_frag - 2*$avg_read < 0){
 		my ($u, $d, $s) = overlap_mates($output_dir, \@upstream_mates, \@downstream_mates, $avg_frag, $std_frag, $avg_read);
 		@upstream_mates = @{$u};
 		@downstream_mates = @{$d};
 		@singles = @{$s};
-	#20150909 removed these files from the list to clean
-	#	push(@temporary, @upstream_mates);
-	#	push(@temporary, @downstream_mates);
-	#	push(@temporary, @singles);
-	}	
-	
-	
-	my $spades_arguments = make_illumina_arguments(\@upstream_mates, \@downstream_mates, \@singles);	
+	}
+
+	#build up arguments for spades
+
+	#start with the reads
+
+	my $spades_arguments = make_illumina_arguments(\@upstream_mates, \@downstream_mates, \@singles);
+
+	#are there any finished sequences we should add?
 
 	my $trusted = "";
 	if (@finished){
@@ -371,6 +383,9 @@ sub main() {
 		$spades_arguments .= " --trusted-contigs $trusted";
 		push(@temporary, $trusted);
 	}
+
+	#are ther any less reliable draft sequences?
+
 	my $untrusted = "";
 	if (@draft){
 		@draft = split(/,/,join(',',@draft));
@@ -378,6 +393,9 @@ sub main() {
 		$spades_arguments .= " --untrusted-contigs $untrusted";
 		push(@temporary, $untrusted);
 	}
+
+	#we can use peptides for ordering and orienting contigs later
+
 	my $peptide = "";
 	if (@peptides){
 		@peptides = split(/,/,join(',',@peptides));
@@ -385,57 +403,81 @@ sub main() {
 		push(@temporary, $peptide);
 	}
 
+	#where should the spades output go?
+
 	my $spades_dir = "$output_dir/$date"."_spades";
 	push(@temporary, $spades_dir);
 
+	#because we've done the quality trimming, run --only-assembler, error correction won't be helpful
+	#running with --careful enables repeat resolution
+
 	my $assembly_command = "$spades_exec $spades_arguments  --only-assembler --careful -o $spades_dir";
+
+	#if we know the expected coverage, that can help get rid of low coverage junk contigs
+
 	if ($cov_cutoff){
 		$assembly_command .= " --cov-cutoff $cov_cutoff";
 	}
-#	system("$spades_exec $spades_arguments  --only-assembler --careful -o $spades_dir");
+
+	#let spades do it's thing
+
 	system($assembly_command);
 
-        my $scaffolds = "$spades_dir/scaffolds.fasta";
+	#check to see if spades was successful; it should make scaffolds.fasta
+	#if it fails, try again with only paired reads and one k-mer size
+	#trusted-contigs, untrusted-contigs, and single ended reads sometimes cause crashes
 
-        if (-e $scaffolds){
-                print "Successful assembly\n";
-        }else{
-                print "Warning: Assembly failed using command:\n\n$assembly_command\n\nFalling back to a simpler command\n";
+  my $scaffolds = "$spades_dir/scaffolds.fasta";
+
+  if (-e $scaffolds){
+  	print "Successful assembly\n";
+  }else{
+    print "Warning: Assembly failed using command:\n\n$assembly_command\n\nFalling back to a simpler command\n";
 		my @null_list = ();
-                my $simple_arguments = make_illumina_arguments(\@upstream_mates, \@downstream_mates, \@null_list);
-                $assembly_command = "$spades_exec $simple_arguments  --only-assembler -k 127 --careful -o $spades_dir";
+    my $simple_arguments = make_illumina_arguments(\@upstream_mates, \@downstream_mates, \@null_list);
+    $assembly_command = "$spades_exec $simple_arguments  --only-assembler -k 127 --careful -o $spades_dir";
 		if ($cov_cutoff){
 			$assembly_command .= " --cov-cutoff $cov_cutoff";
 		}
 		system($assembly_command);
 		if (-e $scaffolds){
-			print "Success with command:\n\n$assembly_command\n\nProceeding to next step\n";	
+			print "Success with command:\n\n$assembly_command\n\nProceeding to next step\n";
 		}else{
 			die "Failed to generate an assembly with spades!\n";
 		}
-        }
-	
+  }
+
+	#if we have pacbio reads, we'll add them in if they match existing contigs
+	#this lets you use pacbio reads from a pooled clones
+
+	#check for "reads of insert" or high-accuracy CCS reads
 
 	my $pacbioroifqgz = "";
 	if (@pacbioroi){
 		@pacbioroi = split(/,/,join(',',@pacbioroi));
 		$pacbioroifqgz = screen_pacbio("scaffold_match_roi", $output_dir, "$spades_dir/scaffolds.fasta", \@pacbioroi);
 		my $n = @upstream_mates + 1;
-		$spades_arguments .= " --s$n $pacbioroifqgz";		
+		$spades_arguments .= " --s$n $pacbioroifqgz";
 		push(@temporary, $pacbioroifqgz);
 	}
+
+	#check for "filtered subreads" or low-accuracy single-pass reads
+
 	my $pacbiofsrfqgz = "";
 	if (@pacbiofsr){
 		@pacbiofsr = split(/,/,join(',',@pacbiofsr));
 		$pacbiofsrfqgz = screen_pacbio("scaffold_match_fsr", $output_dir, "$spades_dir/scaffolds.fasta", \@pacbiofsr);
-		$spades_arguments .= " --pacbio $pacbiofsrfqgz";  
+		$spades_arguments .= " --pacbio $pacbiofsrfqgz";
 		push(@temporary, $pacbiofsrfqgz);
 	}
+
 
 	$assembly_command = "$spades_exec $spades_arguments --careful -o $spades_dir";
 	if ($cov_cutoff){
 		$assembly_command .= " --cov-cutoff $cov_cutoff";
 	}
+
+	#run spades again with pacbio data, if you have it
 
 	if (-e $pacbioroifqgz || -e $pacbiofsrfqgz) {
 		system($assembly_command);
@@ -449,6 +491,9 @@ sub main() {
 
 	my $besst_bowtie_index = "$output_dir/scaffolding";
 	my $besst_bowtie_output = "$output_dir/scaffolding.srt.bam";
+
+	#align reads back to scaffolds, then use that alignment as input to BESST
+	#then fill gaps in BESST scaffolds with Gap2Seq
 
 	if (-e $scaffolds){
 		print "Scaffolding with illumina reads\n";
@@ -480,33 +525,17 @@ sub main() {
 	#collect up filtered illumina reads
 	my $ufilt = join(',',@upstream_mates);
 	my $dfilt = join(',',@downstream_mates);
-	my $sfilt = join(',',@singles);	
+	my $sfilt = join(',',@singles);
 	my $final = "$output_dir/final.fasta";
-#
-#	my $trim_bowtie_index = "$output_dir/trimming";
-#	my $trim_bowtie_output = "$output_dir/trimming.srt.bam";
-#	system("$bowtie2build_exec -q $scaffolds $trim_bowtie_index");
-#	if (@singles){
-#		print "Merged reads detected\n";
-#		system("$bowtie2_exec -x $trim_bowtie_index -1 $ufilt -2 $dfilt -U $sfilt | $samtools_exec view -b -S - | $samtools_exec sort - >$trim_bowtie_output");
-#	}else{
-#		print "No merged reads\n";
-#		system("$bowtie2_exec -x $trim_bowtie_index -1 $ufilt -2 $dfilt | $samtools_exec view -b -S - | $samtools_exec sort - >$trim_bowtie_output");
-#	}
-#	system("$samtools_exec index $trim_bowtie_output");
+
+	#load up the output of BESST and Gap2Seq and write in the output folder
+
 	my $contigs = load_fasta_contigs($scaffolds);
-#	my $trimmed_contigs = quality_trim_contigs($contigs, $trim_bowtie_output);
-#	write_fasta_sequences($trimmed_contigs, $final);
 	write_fasta_sequences($contigs, $final);
 	my $input_contigs = load_fasta_contigs($final);
-#
-#	#print "$final\n";
-#	#die;	
 
-
-#	my $input_contigs = load_fasta_contigs($scaffolds);
-
-	
+	#if there are end sequences, try to order and orient remaining contigs
+	#overwrite the final.fasta file with ordered and oriented contigs
 
 	if (-e $left_end && -e $right_end){
 		my $autofinished_contigs = autofinish($input_contigs, $final, $left_end, $right_end, $peptide);
@@ -515,6 +544,7 @@ sub main() {
 		fasta_output_autofinished($autofinished_contigs, $final);
 	}
 
+	#align reads to final.fasta to produce output for consed
 
 	my $scaffoldssam = "$output_dir/final.sam";
 	my $scaffoldsbam = "$output_dir/final.bam";
@@ -525,41 +555,30 @@ sub main() {
 	system("$samtools_exec view -b -S $scaffoldssam > $scaffoldsbam");
 	system("$samtools_exec sort -o $scaffoldssrt $scaffoldsbam");
 	system("$samtools_exec index $scaffoldssrt");
-#	20160603 -- removed generation of final.fq, final.fa, and final.qual
-#	my $finalfq = "$output_dir/final.fq";
-#	my $finalfa = "$output_dir/final.fa";
-#	my $finalqual = "$output_dir/final.qual";
-#	system("$samtools_exec mpileup -uf $final $scaffoldssrt | bcftools call -c | vcfutils.pl vcf2fq >$finalfq");
-
-#	my $conversion_fq = Bio::SeqIO->new(-file=>$finalfq, -format=>"fastq");
-#	my $conversion_fa = Bio::SeqIO->new(-file=>">$finalfa", -format=>"fasta");
-#	my $conversion_qual = Bio::SeqIO->new(-file=>">$finalqual", -format=>"qual");
-#	while(my $contig = $conversion_fq->next_seq){
-#		$conversion_fa->write_seq($contig);
-#		$conversion_qual->write_seq($contig); 
-#	}
-#	$conversion_fq->close;
-#	$conversion_fa->close;
-#	$conversion_qual->close;
 	system("$makeregions_exec $final");
+
+	#consed won't write to exisitng directory, so wipe those out if they exist.
+
 	if (-e $consed_dir) {
 		rmtree([ "$consed_dir" ]) || print "$! : for $consed_dir\n";
-#		finddepth(\&wanted, $consed_dir);
 	}
 	system("$consed_exec -bam2ace -bamFile $scaffoldssrt -regionsFile $output_dir/finalRegions.txt -dir $consed_dir");
 
 	my @bowties = glob("$output_dir"."*"."bt2");
 	push(@temporary,@bowties);
+
+	#unless we're keeping temporary files, remove them to save space
+
 	unless ($keeptemp){
 		rmtree([ @temporary ]);
-		#foreach my $t (@temporary){
-		#	
-		#	#finddepth(\&wanted, @temporary);
-		#}
 	}
 
-}	
+	#we're all done!
 
+}
+
+
+#use bowtie and samtools to get the average depth across the vector sequence
 
 sub estimate_coverage_cutoff_from_vector {
 	my ($vector, $ulist, $dlist) = @_;
@@ -581,6 +600,7 @@ sub estimate_coverage_cutoff_from_vector {
 	return int($ave{$sorted[0]});
 }
 
+# Looks like cruft; remove next go around
 
 sub wanted{
 	if (-f) {
@@ -594,6 +614,8 @@ sub wanted{
 	}
 }
 
+# Looks like cruft; remove next go around
+
 sub first_uniq_kmer ($$$) {
 	my ($k, $root, $seq) = @_;
 	my $kmer;
@@ -606,6 +628,8 @@ sub first_uniq_kmer ($$$) {
 	}
 	return "";
 }
+
+# Looks like cruft;  only used in first_uniq_kmer function above; remove next go around
 
 sub all_k_unique ($$){
 	my ($k, $s) = @_;
@@ -621,6 +645,7 @@ sub all_k_unique ($$){
 	return 1;
 }
 
+# Looks like cruft; remove next go around. Also remove protoype function
 
 sub make_trusted ($$){
 	my ($filename, $gap_array_ref) = @_;
@@ -632,13 +657,15 @@ sub make_trusted ($$){
 			if ($c->length() >251){
 				$number++;
 				$c->id($number);
-				$contigs{$c->id} = $c;	
+				$contigs{$c->id} = $c;
 			}
 		}
 	}
 	write_fasta_sequences(\%contigs, $filename);
 	return $number;
 }
+
+#uses bioperl to write sequences in fasta format
 
 sub write_fasta_sequences ($$){
 	my ($contigs, $file) = @_;
@@ -651,6 +678,9 @@ sub write_fasta_sequences ($$){
 	return $n;
 }
 
+#should this still be here? Check whether I need it if I'm using bioperl
+#used in reverse_contig subroutine
+
 sub revcomp ($){
 	my $string = shift @_;
 	my $return = "";
@@ -658,6 +688,8 @@ sub revcomp ($){
 	$return = reverse($string);
 	return $return;
 }
+
+# Looks like cruft; remove next go around. Also remove protoype function
 
 sub quality_trim_contigs($$){
 	my ($contigs, $bam) = (@_);
@@ -713,6 +745,8 @@ sub quality_trim_contigs($$){
 	return \%trimmed;
 }
 
+#loads a fasta file
+
 sub load_fasta_contigs ($) {
 	my $file = shift(@_);
 	my %contigs;
@@ -724,6 +758,7 @@ sub load_fasta_contigs ($) {
 	return \%contigs;
 }
 
+#uses blasr and samtools to extract pacbio reads matching contigs
 
 sub screen_pacbio ($$$$){
 	my ($text, $dir, $scaffolds, $pbr) = @_;
@@ -740,11 +775,14 @@ sub screen_pacbio ($$$$){
 			print OUT "@"."$line[0]\n$line[9]\n+\n$line[10]\n";
 		}
 		close SAM;
-		
+
 	}
 	close OUT;
 	return $output;
 }
+
+#concatenates multiple fasta files into one for spades
+#check portablity here, maybe use bioperl instead?
 
 sub merge_fastas ($$$){
 	my ($text, $dir,$fr) = @_;
@@ -754,6 +792,8 @@ sub merge_fastas ($$$){
 	system("cat $f > $out");
 	return $out;
 }
+
+#turn arrays of read files into string of arguments for spades
 
 sub make_illumina_arguments ($$$){
 	my ($upr, $downr, $singler) = @_;
@@ -782,6 +822,9 @@ sub make_illumina_arguments ($$$){
 	return $string;
 }
 
+
+#runs cutadapt to remove adapter sequences from reads
+
 sub mask_adapters ($$$) {
 	my ($dir, $upr, $downr) = @_;
 	my @ups = @{$upr};
@@ -794,21 +837,20 @@ sub mask_adapters ($$$) {
 		my ($utmp, $dtmp) = ("$dir/$lib.cutadapt.1.tmp.fq", "$dir/$lib.cutadapt.2.tmp.fq");
 		my ($uout, $dout) = ("$dir/$lib.cutadapt.1.out.fq", "$dir/$lib.cutadapt.2.out.fq");
 		my ($ufqgz, $dfqgz) = ("$dir/$lib.cutadapt.1.fq.gz", "$dir/$lib.cutadapt.2.fq.gz");
-			
+
 		print "$ufqgz, $dfqgz\n";
 		system("$cutadapt_exec $cutadapt_params -o $ufqgz -p $dfqgz $u $d");
-#		system("$cutadapt_exec $cutadapt_params -o $utmp -p $dtmp $u $d");
-#		system("$cutadapt_exec $cutadapt_params -o $dout -p $uout $dtmp $utmp");
-#		system("$gzip_exec -9cf <$uout >$ufqgz");
-#		system("$gzip_exec -9cf <$dout >$dfqgz");
-#		unlink($utmp,$dtmp,$uout,$dout);
-#		system("$cutadapt_exec $cutadapt_params $u | $gzip_exec -9cf >$ufqgz");
-#		system("$cutadapt_exec $cutadapt_params $d | $gzip_exec -9cf >$dfqgz");
 		push(@firsts, $ufqgz);
 		push(@seconds, $dfqgz);
 	}
 	return (\@firsts, \@seconds);
 }
+
+#remove contaminating reads from host or vector
+#uses bowtie to align, but perl to parse because
+#I want to keep the reads that don't align
+#but count the ones that do
+
 
 sub screen_contamination ($$$$$) {
 	my ($text, $dir, $index, $upr, $downr) = @_;
@@ -833,11 +875,11 @@ sub screen_contamination ($$$$$) {
 	foreach my $lib (1 .. $count){
 		my ($u, $d) = ($ups[$lib-1], $downs[$lib-1]);
 		my ($ufqgz, $dfqgz) = ("$dir/$lib.$text.1.fq.gz", "$dir/$lib.$text.2.fq.gz");
-		print "$ufqgz, $dfqgz\n";	
-	
+		print "$ufqgz, $dfqgz\n";
+
 		open (UOUT, "| $gzip_exec -9c >$ufqgz") || die "can't write $text screened reads to $ufqgz\n";
 		open (DOUT, "| $gzip_exec -9c >$dfqgz") || die "can't write $text screened reads to $dfqgz\n";
-	
+
 		open (SAM, "$bowtie2_exec $bowtie2_screen_params -x $index -1 $u -2 $d |") || die "can't run bowtie to screen $text\n";
 		while (<SAM>){
 			if (m/^\@/){
@@ -862,18 +904,20 @@ sub screen_contamination ($$$$$) {
 		push(@firsts, $ufqgz);
 		push(@seconds, $dfqgz);
 	}
-        my $fstat = Statistics::Descriptive::Full->new();
+  my $fstat = Statistics::Descriptive::Full->new();
 	$fstat->add_data(@frags);
 	my $rstat = Statistics::Descriptive::Full->new();
 	$rstat->add_data(@reads);
 
-        my $avg_frag = int(1 + $fstat->mean());
-        my $std_frag = int(1 + $fstat->standard_deviation());
-        my $avg_read = int(1 + $rstat->mean());
+  my $avg_frag = int(1 + $fstat->mean());
+  my $std_frag = int(1 + $fstat->standard_deviation());
+  my $avg_read = int(1 + $rstat->mean());
 
 	return (\@firsts, \@seconds, $avg_frag, $std_frag, $avg_read);
 }
 
+#runs flash to overlap paired reads
+#put a function prototype up top!
 
 sub overlap_mates ($$$$$) {
 	my ($dir, $upr, $downr, $f, $s, $r) = @_;
@@ -893,12 +937,12 @@ sub overlap_mates ($$$$$) {
 	return (\@firsts, \@seconds, \@singles);
 }
 
-
+#checks to make sure all executables are reachable and executable!
 
 sub check_executable ($$$) {
 	my ($option, $default, $execs) = @_;
 	my $value = '';
-		
+
 	if (defined($option) && -x $option){
 		$value = $option;
 	}else{
@@ -915,8 +959,10 @@ sub check_executable ($$$) {
 			}
 		}
 	}
-	return ($value, $execs); 
+	return ($value, $execs);
 }
+
+#prints version information
 
 sub version() {
 	print qq/SHIMS Pipeline
@@ -925,19 +971,21 @@ sub version() {
 	return 1;
 }
 
+#prints paths to executables, and shows how to set environment variables
+
 sub executables() {
 	print qq/
-        Changing Executables:
-        --spades        <path to SPAdes: $spades_exec>
-        --samtools      <path to samtools: $samtools_exec>
-        --bowtie2build  <path to bowtie2-build: $bowtie2build_exec>
-        --bowtie2       <path to bowtie2: $bowtie2_exec>
-        --blat          <path to blat: $blat_exec>
+Changing Executables:
+	--spades        <path to SPAdes: $spades_exec>
+  --samtools      <path to samtools: $samtools_exec>
+  --bowtie2build  <path to bowtie2-build: $bowtie2build_exec>
+  --bowtie2       <path to bowtie2: $bowtie2_exec>
+  --blat          <path to blat: $blat_exec>
 	--velveth	<path to velveth: $velveth_exec>
 	--velvetg	<path to velvetg: $velvetg_exec>
-        --grep          <path to grep: $grep_exec>
+  --grep          <path to grep: $grep_exec>
 	--awk		<path to awk: $awk_exec>
-        --gzip          <path to gzip: $gzip_exec>
+  --gzip          <path to gzip: $gzip_exec>
 	--cutadapt	<path to cutadapt: $cutadapt_exec>
 	--blasr		<path to blasr: $blasr_exec>
 	--consed	<path to consed: $consed_exec>
@@ -946,12 +994,12 @@ sub executables() {
 	--besst		<path to besst: $besst_exec>
 	--gap2seq	<path to gap2seq: $gap2seq_exec>
 
-	To make the current executables the default:
+To make the current executables the default:
 
 export SHIMS_SPADES_EXEC=$spades_exec
 export SHIMS_SAMTOOLS_EXEC=$samtools_exec
 export SHIMS_BOWTIE2BUILD_EXEC=$bowtie2build_exec
-export SHIMS_BOWTIE2_EXEC=$bowtie2_exec	
+export SHIMS_BOWTIE2_EXEC=$bowtie2_exec
 export SHIMS_BLAT_EXEC=$blat_exec
 export SHIMS_VELVETH_EXEC=$velveth_exec
 export SHIMS_VELVETG_EXEC=$velvetg_exec
@@ -969,6 +1017,8 @@ export SHIMS_GAP2SEQ_EXEC=$gap2seq_exec
 
 	return 1;
 }
+
+#prints usage information.
 
 sub usage() {
 	version();
@@ -1025,6 +1075,7 @@ Optional  arguments:
 
 }
 
+#autofinisher -- complex code here below, need to double check it.
 
 sub autofinish {
 	my ($c, $contigs, $le, $re, $peptides) = @_;
@@ -1068,7 +1119,7 @@ sub autofinish {
 	close RE;
 
 	print "#autofinisher: after blat L: $bestleft->{'tname'} R: $bestright->{'tname'}\n";
-	
+
 	### Decide if this is simple or not
 
 	if ($bestleft->{'tname'} && $bestright->{'tname'} && $bestleft->{'tname'} eq $bestright->{'tname'}){
@@ -1079,7 +1130,7 @@ sub autofinish {
 		if ($bestleft->{'strand'} eq "+" && $bestright->{'strand'} eq "-" && $bestleft->{'tstart'} < $bestright->{'tend'}){
 			### forward case
 			print "#autofinisher: contig is in forward orientation\n";
-			$r->{$id} = make_result_contig($c->{$id}, 1, 1, 1, 1);	
+			$r->{$id} = make_result_contig($c->{$id}, 1, 1, 1, 1);
 			return $r;
 		}elsif ($bestleft->{'strand'} eq "-" && $bestright->{'strand'} eq "+" && $bestright->{'tstart'} < $bestleft->{'tend'}){
 			### reverse case
@@ -1093,7 +1144,7 @@ sub autofinish {
 				$bestright = {};
 			}else{
 				$bestleft = {};
-			}		
+			}
 		}
 	}
 
@@ -1104,7 +1155,7 @@ sub autofinish {
 	### First lets dump all the contigs into the result hash, but mark them as unordered and unoriented
 
 	foreach my $id (keys(%{$c})){
-		$r->{$id} = make_result_contig($c->{$id}, 0, 0, 0, 1);	
+		$r->{$id} = make_result_contig($c->{$id}, 0, 0, 0, 1);
 	}
 
 	### Now lets see if the end matches let us find the first and last contig
@@ -1120,7 +1171,7 @@ sub autofinish {
 			$r->{$first_id}->{'strand'} = -1
 		}
 		print "#autofinisher: $first_id contig is on the left\n";
-	}		
+	}
 
 	### Remember that a plus stranded hit with the right end means that the last contig should be reversed
 
@@ -1140,7 +1191,7 @@ sub autofinish {
 	### We can align to peptides to try to orient the other contigs
 
 	my ($peptide_matches, $matrix, $peptide_info);;
-	
+
 	if ($peptides){
 		print "#autofinisher: conducting alignments to peptides in $peptides\n";
 
@@ -1169,7 +1220,7 @@ sub autofinish {
 				$matrix->{$contig}->{$pep}->{'aa'} = $aa;
 				$matrix->{$contig}->{$pep}->{'score'} = $peptide_matches->{$pep}->{$aa}->{'score'};
 				if ($peptide_matches->{$pep}->{$aa}->{'strand'} eq '++'){
-					$matrix->{$contig}->{$pep}->{'strand'} = 1;				
+					$matrix->{$contig}->{$pep}->{'strand'} = 1;
 				}else{
 					$matrix->{$contig}->{$pep}->{'strand'} = -1;
 				}
@@ -1187,13 +1238,13 @@ sub autofinish {
 
 	my $m;
 	my $middle_count;
-	
+
 	while (autofinish_status($r)){
 		if ($innerleft_id) {
 			### start on the left side, going right
 			print "#autofinisher: trying to extend inner left contig $innerleft_id to the right\n";
 			my $nextleft_id;
-			my @peps = sort {$matrix->{$innerleft_id}->{$b}->{'score'} <=> $matrix->{$innerleft_id}->{$a}->{'score'}} keys(%{$matrix->{$innerleft_id}});	
+			my @peps = sort {$matrix->{$innerleft_id}->{$b}->{'score'} <=> $matrix->{$innerleft_id}->{$a}->{'score'}} keys(%{$matrix->{$innerleft_id}});
 			foreach my $pep (@peps){
 				print "#autofinisher: checking peptide: $pep\n";
 				if ($r->{$innerleft_id}->{'strand'} == 1){
@@ -1219,11 +1270,11 @@ sub autofinish {
 								}
 								last;
 							}
-						}			
+						}
 					}else{
 						### case 1b: inner left contig is forward orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
-							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerleft_id}->{$pep}->{'aa'}){	
+							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerleft_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
 								if ($r->{$contig}->{'ordered'} = 1){
 								}else{
@@ -1266,7 +1317,7 @@ sub autofinish {
                                                                 }
                                                                 last;
                                                         }
-                                                }							
+                                                }
 					}else{
 						### case 2b: inner left contig is reverse orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
@@ -1298,13 +1349,13 @@ sub autofinish {
 			}
 			print "#autofinisher: moving on from contig $innerleft_id to $nextleft_id\n";
 			$innerleft_id = $nextleft_id;
-	
+
 		}elsif ($innerright_id){
-			
+
 			### start on the right side, going left
 			print "#autofinisher: trying to extend inner left contig $innerright_id to the left\n";
 			my $nextright_id;
-			my @peps = sort {$matrix->{$innerright_id}->{$b}->{'score'} <=> $matrix->{$innerright_id}->{$a}->{'score'}} keys(%{$matrix->{$innerright_id}});	
+			my @peps = sort {$matrix->{$innerright_id}->{$b}->{'score'} <=> $matrix->{$innerright_id}->{$a}->{'score'}} keys(%{$matrix->{$innerright_id}});
 			foreach my $pep (@peps){
 				print "#autofinisher: checking peptide: $pep\n";
 				if ($r->{$innerright_id}->{'strand'} == 1){
@@ -1312,7 +1363,7 @@ sub autofinish {
 					if ($matrix->{$innerright_id}->{$pep}->{'strand'} == 1){
 						### case 1a: inner right contig is forward orientation; peptide is in forward orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
-							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerright_id}->{$pep}->{'aa'}){	
+							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerright_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
 								if ($r->{$contig}->{'ordered'} = 1){
 								}else{
@@ -1330,7 +1381,7 @@ sub autofinish {
 								}
 								last;
 							}
-						}		
+						}
 					}else{
 						### case 1b: inner right contig is forward orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
@@ -1353,8 +1404,8 @@ sub autofinish {
 								last;
 							}
 						}
-					}	
-						
+					}
+
 				}else{
 					### case 2: inner right contig is reverse orientation
 					if ($matrix->{$innerright_id}->{$pep}->{'strand'} == 1){
@@ -1378,7 +1429,7 @@ sub autofinish {
                                                                 }
                                                                 last;
                                                         }
-                                                }				
+                                                }
 					}else{
 						### case 2b: inner right contig is reverse orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
@@ -1400,7 +1451,7 @@ sub autofinish {
                                                                 }
                                                                 last;
                                                         }
-                                                }			
+                                                }
 					}
 				}
 				if ($nextright_id){
@@ -1412,11 +1463,11 @@ sub autofinish {
 			$innerright_id = $nextright_id;
 
 		}elsif ($middleright_id){
-						
+
 			### start from middle on the right side, going left
 			print "#autofinisher: trying to extend middle right contig $middleright_id to the left\n";
 			my $nextright_id;
-			my @peps = sort {$matrix->{$middleright_id}->{$b}->{'score'} <=> $matrix->{$middleright_id}->{$a}->{'score'}} keys(%{$matrix->{$middleright_id}});	
+			my @peps = sort {$matrix->{$middleright_id}->{$b}->{'score'} <=> $matrix->{$middleright_id}->{$a}->{'score'}} keys(%{$matrix->{$middleright_id}});
 			foreach my $pep (@peps){
 				print "#autofinisher: checking peptide: $pep\n";
 				if ($r->{$middleright_id}->{'strand'} == 1){
@@ -1424,7 +1475,7 @@ sub autofinish {
 					if ($matrix->{$middleright_id}->{$pep}->{'strand'} == 1){
 						### case 1a: inner right contig is forward orientation; peptide is in forward orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
-							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleright_id}->{$pep}->{'aa'}){	
+							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleright_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
 								if ($r->{$contig}->{'ordered'} = 1){
 								}else{
@@ -1442,7 +1493,7 @@ sub autofinish {
 								}
 								last;
 							}
-						}		
+						}
 					}else{
 						### case 1b: inner right contig is forward orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
@@ -1465,8 +1516,8 @@ sub autofinish {
 								last;
 							}
 						}
-					}	
-						
+					}
+
 				}else{
 					### case 2: inner right contig is reverse orientation
 					if ($matrix->{$middleright_id}->{$pep}->{'strand'} == 1){
@@ -1490,7 +1541,7 @@ sub autofinish {
                                                                 }
                                                                 last;
                                                         }
-                                                }				
+                                                }
 					}else{
 						### case 2b: inner right contig is reverse orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
@@ -1512,7 +1563,7 @@ sub autofinish {
                                                                 }
                                                                 last;
                                                         }
-                                                }			
+                                                }
 					}
 				}
 				if ($nextright_id){
@@ -1522,12 +1573,12 @@ sub autofinish {
 			}
 			print "#autofinisher: moving on from contig $middleright_id to $nextright_id\n";
 			$middleright_id = $nextright_id;
-	
+
 		}elsif ($middleleft_id){
 			### start on the left side, going right
 			print "#autofinisher: trying to extend middle left contig $middleleft_id to the right\n";
 			my $nextleft_id;
-			my @peps = sort {$matrix->{$middleleft_id}->{$b}->{'score'} <=> $matrix->{$middleleft_id}->{$a}->{'score'}} keys(%{$matrix->{$middleleft_id}});	
+			my @peps = sort {$matrix->{$middleleft_id}->{$b}->{'score'} <=> $matrix->{$middleleft_id}->{$a}->{'score'}} keys(%{$matrix->{$middleleft_id}});
 			foreach my $pep (@peps){
 				print "#autofinisher: checking peptide: $pep\n";
 				if ($r->{$middleleft_id}->{'strand'} == 1){
@@ -1553,11 +1604,11 @@ sub autofinish {
 								}
 								last;
 							}
-						}			
+						}
 					}else{
 						### case 1b: inner left contig is forward orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
-							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleleft_id}->{$pep}->{'aa'}){	
+							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleleft_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
 								if ($r->{$contig}->{'ordered'} = 1){
 								}else{
@@ -1600,7 +1651,7 @@ sub autofinish {
                                                                 }
                                                                 last;
                                                         }
-                                                }							
+                                                }
 					}else{
 						### case 2b: inner left contig is reverse orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
@@ -1676,9 +1727,9 @@ sub autofinish {
 	### When we check that, it's a good time to give a status update
 
 	while (autofinish_status($r)){
-	
-		
-		
+
+
+
 		### some magic happens in here
 
 	}
@@ -1686,7 +1737,7 @@ sub autofinish {
 	### Okay, we just need to give positive numbers to the contigs oriented from the right side
 
 	my @keys = keys(%{$r});
-	my $nall = @keys;	
+	my $nall = @keys;
 	foreach my $id (keys(%{$r})){
 		if ($r->{$id}->{'number'} < 0){
 			$r->{$id}->{'number'} = $nall + $r->{$id}->{'number'} + 1;
@@ -1695,6 +1746,8 @@ sub autofinish {
 
 	return $r;
 }
+
+#gives a progress report on ordering and orienting contigs.
 
 sub autofinish_status {
 	my ($r) = @_;
@@ -1719,6 +1772,8 @@ sub autofinish_status {
 	}
 }
 
+#assign order and orientation to contig for autofinisher
+
 sub make_result_contig{
 	my ($bioseq, $num, $ord, $ori, $str) = @_;
 	my $x = {
@@ -1727,9 +1782,11 @@ sub make_result_contig{
 		'ordered'	=>	$ord,
 		'oriented'	=>	$ori,
 		'strand'	=>	$str
-		};	
+		};
 	return $x;
 }
+
+#looks like cruft; remove at next update
 
 sub invert_strand {
 	my $strand = shift(@_);
@@ -1742,6 +1799,7 @@ sub invert_strand {
 	}
 }
 
+#looks like cruft; remove at next update
 
 sub count_contigs {
 	my $c = shift(@_);
@@ -1751,6 +1809,8 @@ sub count_contigs {
 	}
 	return $count;
 }
+
+#looks like cruft; remove at next update
 
 sub filter_contig_list {
 	my ($c, @filter) = @_;
@@ -1766,6 +1826,8 @@ sub filter_contig_list {
 	}
 	return $r;
 }
+
+#looks like cruft; only called by next contig left? remove at next update
 
 sub next_contig_right {
 	my ($prev, $u) = @_;
@@ -1787,6 +1849,9 @@ sub next_contig_right {
 	return ($max, $maxdir);
 }
 
+
+#looks like cruft; remove at next update
+
 sub next_contig_left {
 	my ($prev, $u) = @_;
 	my ($max, $maxdir) = next_contig_right(reverse_contig($prev),$u);
@@ -1796,8 +1861,9 @@ sub next_contig_left {
 		$maxdir = "+";
 	}
 	return ($max, $maxdir);
-}	
+}
 
+#looks like cruft; only called by next_contig_left; remove at next update
 
 sub reverse_contig {
 	my $f = shift(@_);
@@ -1825,6 +1891,8 @@ sub reverse_contig {
 	return $r;
 }
 
+#looks like cruft; remove at next update
+
 sub copy_contig {
 	my $o = shift(@_);
 	my ($lend, $rend);
@@ -1846,13 +1914,13 @@ sub copy_contig {
 	return $c;
 }
 
-
+#writes output of autofinisher to fasta file.
 
 sub fasta_output_autofinished {
 	my ($c, $o) = @_;
 	my $out = Bio::SeqIO->new(-file => ">$o", '-format' => 'Fasta');
 
-	print "#autofinisher: writing contigs to file: $o\n";	
+	print "#autofinisher: writing contigs to file: $o\n";
 
 	my @contigs = sort {$c->{$a}->{'number'} <=> $c->{$b}->{'number'}} (keys(%{$c}));
 	foreach my $contig (@contigs){
@@ -1881,6 +1949,8 @@ sub fasta_output_autofinished {
 	}
 }
 
+#looks like cruft; remove at next update
+
 sub trim_off_ends {
 	my $c = shift;
 	my $r;
@@ -1892,6 +1962,8 @@ sub trim_off_ends {
 	}
 	return $r;
 }
+
+#looks like cruft; only called by trim_off_ends remove at next update
 
 sub trim_homodecamers {
         my $seq = shift;
@@ -1916,5 +1988,5 @@ sub trim_homodecamers {
 	                }
 	        }
 	}
-        return $seq;		
+        return $seq;
 }
