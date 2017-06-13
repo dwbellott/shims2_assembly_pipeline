@@ -100,11 +100,11 @@ sub mask_adapters($$$);
 sub make_illumina_arguments($$$);
 sub merge_fastas($$$);
 sub screen_pacbio ($$$$);
-sub make_trusted ($$);
 sub imagine ($$$$$$);
 sub write_fasta_sequences ($$);
 sub quality_trim_contigs ($$);
 sub load_fasta_contigs ($);
+sub overlap_mates ($$$$$$);
 sub main ();
 
 ############### Run the program
@@ -600,70 +600,6 @@ sub estimate_coverage_cutoff_from_vector {
 	return int($ave{$sorted[0]});
 }
 
-# Looks like cruft; remove next go around
-
-sub wanted{
-	if (-f) {
-		unlink($_) or warn "couldn't delete file $_ : $!\n";
-		return 1;
-	}elsif (-d){
-		rmdir($_) or warn "couldn't delete directory $_ : $!\n";
-		return 1;
-	}else{
-		return 0;
-	}
-}
-
-# Looks like cruft; remove next go around
-
-sub first_uniq_kmer ($$$) {
-	my ($k, $root, $seq) = @_;
-	my $kmer;
-	while (length($seq) > $k){
-		$kmer = substr($seq, 0, $k);
-		if (all_k_unique($root, $kmer)){
-			return $kmer;
-		}
-		substr($seq, 0, 1) = "";
-	}
-	return "";
-}
-
-# Looks like cruft;  only used in first_uniq_kmer function above; remove next go around
-
-sub all_k_unique ($$){
-	my ($k, $s) = @_;
-	my %h;
-	while (length($s) > $k){
-		my $x = substr($s, 0, $k);
-		$h{$x}++;
-		if ($h{$x} > 1){
-			return 0;
-		}
-		substr($s, 0, 1) = "";
-	}
-	return 1;
-}
-
-# Looks like cruft; remove next go around. Also remove protoype function
-
-sub make_trusted ($$){
-	my ($filename, $gap_array_ref) = @_;
-	my %contigs;
-	my $number = 0;
-	foreach my $f (@$gap_array_ref){
-		my $in = Bio::SeqIO->new(-format => 'fasta', -file => $f);
-		while (my $c = $in->next_seq()){
-			if ($c->length() >251){
-				$number++;
-				$c->id($number);
-				$contigs{$c->id} = $c;
-			}
-		}
-	}
-	write_fasta_sequences(\%contigs, $filename);
-	return $number;
-}
 
 #uses bioperl to write sequences in fasta format
 
@@ -678,72 +614,6 @@ sub write_fasta_sequences ($$){
 	return $n;
 }
 
-#should this still be here? Check whether I need it if I'm using bioperl
-#used in reverse_contig subroutine
-
-sub revcomp ($){
-	my $string = shift @_;
-	my $return = "";
-	$string =~ tr/acgtACGT/tgcaTGCA/;
-	$return = reverse($string);
-	return $return;
-}
-
-# Looks like cruft; remove next go around. Also remove protoype function
-
-sub quality_trim_contigs($$){
-	my ($contigs, $bam) = (@_);
-	my @fragments = ();
-	open (LIST, "samtools depth -q 20 -Q 20 $bam | cut -f 3 | ") || die "can't pipe samtools depth on $bam\n";
-	my @depths = <LIST>;
-	close LIST;
-	my $stat = Statistics::Descriptive::Full->new();
-	$stat->add_data(@depths);
-	my $lower = 2;
-	my $upper = $stat->median() + 5*$stat->standard_deviation();
-
-	my ($name, $beg, $end);
-	open (DEPTH, "samtools depth -q 20 -Q 20 $bam |") || die "can't pipe samtools depth on $bam\n";
-	while(<DEPTH>){
-		chomp;
-		my ($contig, $position, $depth) = split(/\s+/, $_);
-		if ($name && $beg && $end){
-			if ($name ne $contig){
-				my $f = {name => $name, beg => $beg, end => $end};
-				push (@fragments, $f);
-				if ($depth > $lower && $depth < $upper){
-					$name = $contig;
-					$beg = $position;
-					$end = $position;
-				}else{
-					($name, $beg, $end) = ();
-				}
-			}elsif ($depth > $lower && $depth < $upper){
-				$end = $position;
-			}else{
-				my $f = {name => $name, beg => $beg, end => $end};
-				push (@fragments, $f);
-				($name, $beg, $end) = ();
-			}
-
-		}elsif ($depth > $lower && $depth < $upper){
-			$name = $contig;
-			$beg = $position;
-			$end = $position;
-		}
-	}
-	close DEPTH;
-	my %trimmed = ();
-	my $n = 0;
-	foreach my $f (@fragments){
-		if ($contigs->{$f->{name}} && $f->{end} - $f->{beg} > 250){
-			$n++;
-			my $t = Bio::Seq->new(-id => $n, -seq => $contigs->{$f->{name}}->subseq($f->{beg}, $f->{end}));
-			$trimmed{$n} = $t;
-		}
-	}
-	return \%trimmed;
-}
 
 #loads a fasta file
 
@@ -919,7 +789,7 @@ sub screen_contamination ($$$$$) {
 #runs flash to overlap paired reads
 #put a function prototype up top!
 
-sub overlap_mates ($$$$$) {
+sub overlap_mates ($$$$$$) {
 	my ($dir, $upr, $downr, $f, $s, $r) = @_;
 	my @ups = @{$upr};
 	my @downs = @{$downr};
@@ -1786,134 +1656,6 @@ sub make_result_contig{
 	return $x;
 }
 
-#looks like cruft; remove at next update
-
-sub invert_strand {
-	my $strand = shift(@_);
-	if ($strand eq "+"){
-		return "-";
-	}elsif ($strand eq "-"){
-		return "+";
-	}else{
-		die "couldn't invert null strand\n";
-	}
-}
-
-#looks like cruft; remove at next update
-
-sub count_contigs {
-	my $c = shift(@_);
-	my $count = 0;
-	foreach my $i (keys(%{$c})){
-		$count++;
-	}
-	return $count;
-}
-
-#looks like cruft; remove at next update
-
-sub filter_contig_list {
-	my ($c, @filter) = @_;
-	my $r;
-	my %f;
-	foreach my $i (@filter){
-		$f{$i} = 1;
-	}
-	foreach my $i (keys(%{$c})){
-		unless ($f{$i}){
-			$r->{$i} = copy_contig($c->{$i});
-		}
-	}
-	return $r;
-}
-
-#looks like cruft; only called by next contig left? remove at next update
-
-sub next_contig_right {
-	my ($prev, $u) = @_;
-	my $max;
-	my $maxscore;
-	my $maxdir;
-	foreach my $i (keys(%{$u})){
-		my ($lscore, $rscore);
-		foreach my $j (keys(%{$prev->{'rend'}})){
-			$lscore += $u->{$i}->{'lend'}->{$j};
-			$rscore += $u->{$i}->{'rend'}->{$j};
-		}
-		if ($lscore > $rscore && $lscore > $maxscore){
-			($max, $maxscore, $maxdir) = ($i, $lscore, "+");
-		}elsif ($rscore > $lscore && $rscore > $maxscore){
-			($max, $maxscore, $maxdir) = ($i, $rscore, "-");
-		}
-	}
-	return ($max, $maxdir);
-}
-
-
-#looks like cruft; remove at next update
-
-sub next_contig_left {
-	my ($prev, $u) = @_;
-	my ($max, $maxdir) = next_contig_right(reverse_contig($prev),$u);
-	if ($maxdir eq "+"){
-		$maxdir = "-";
-	}else{
-		$maxdir = "+";
-	}
-	return ($max, $maxdir);
-}
-
-#looks like cruft; only called by next_contig_left; remove at next update
-
-sub reverse_contig {
-	my $f = shift(@_);
-	my ($seq, $len, $is, $ie, $sc, $lend, $rend);
-	$seq = revcomp($f->{'sequence'});
-	$len = length($seq);
-	$is = $len - $f->{'ins_end'};
-	$ie = $len - $f->{'ins_start'};
-	$sc = $f->{'supercontig'};
-	foreach my $i (keys(%{$f->{'rend'}})){
-		$lend->{$i} = $f->{'rend'}->{$i};
-	}
-	foreach my $i (keys(%{$f->{'lend'}})){
-		$rend->{$i} = $f->{'lend'}->{$i};
-	}
-	my $r = {
-		'sequence'	=> $seq,
-		'length'	=> $len,
-		'ins_start'	=> $is,
-		'ins_end'	=> $ie,
-		'supercontig'	=> $sc,
-		'lend'		=> $lend,
-		'rend'		=> $rend
-	};
-	return $r;
-}
-
-#looks like cruft; remove at next update
-
-sub copy_contig {
-	my $o = shift(@_);
-	my ($lend, $rend);
-	foreach my $i (keys(%{$o->{'lend'}})){
-		$lend->{$i} = $o->{'lend'}->{$i};
-	}
-	foreach my $i (keys(%{$o->{'rend'}})){
-		$rend->{$i} = $o->{'rend'}->{$i};
-	}
-	my $c = {
-		'sequence'	=> $o->{'sequence'},
-		'length'	=> $o->{'length'},
-		'ins_start'	=> $o->{'ins_start'},
-		'ins_end'	=> $o->{'ins_end'},
-		'supecontig'	=> $o->{'supercontig'},
-		'lend'		=> $lend,
-		'rend'		=> $rend
-	};
-	return $c;
-}
-
 #writes output of autofinisher to fasta file.
 
 sub fasta_output_autofinished {
@@ -1947,46 +1689,4 @@ sub fasta_output_autofinished {
 		$seq->desc($description);
 		$out->write_seq($seq)
 	}
-}
-
-#looks like cruft; remove at next update
-
-sub trim_off_ends {
-	my $c = shift;
-	my $r;
-	my @contigs = keys(%{$c});
-	foreach my $k (@contigs){
-		my $copy = copy_contig($c->{$k});
-		$copy->{'sequence'} = trim_homodecamers($copy->{'sequence'});
-		$r->{$k} = $copy;
-	}
-	return $r;
-}
-
-#looks like cruft; only called by trim_off_ends remove at next update
-
-sub trim_homodecamers {
-        my $seq = shift;
-        my %hd = (      'AAAAAAAAAA'    => 1,
-                        'CCCCCCCCCC'    => 1,
-                        'GGGGGGGGGG'    => 1,
-                        'TTTTTTTTTT'    => 1);
-        if (length($seq) < 600){
-        }else{
-	        #trim the beginning
-	        foreach my $i (reverse(0 .. 290)){
-	                if ($hd{substr($seq, $i, 10)}){
-	                        $seq = substr($seq, $i+1);
-	                        last;
-	                }
-	        }
-		#trim the end
-	        foreach my $i (-310 .. -10){
-	                if ($hd{substr($seq, $i, 10)}){
-	                        $seq = substr($seq, 0, length($seq)+$i);
-	                        last;
-	                }
-	        }
-	}
-        return $seq;
 }
