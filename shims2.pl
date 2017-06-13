@@ -507,10 +507,7 @@ sub main() {
 			print "Scaffolding successful\n";
 			print "Filling gaps with illumina reads\n";
 			$scaffolds = $besst_scaffolds;
-			#20160606 -- disabled gap2seq because it's causing too many problems
-			#system("$gap2seq_exec -scaffolds $besst_scaffolds -filled $filled_gaps -reads $utrim,$dtrim");
-			print "Gap2Seq disabled\n";
-			#end 20160606
+			system("$gap2seq_exec -scaffolds $besst_scaffolds -filled $filled_gaps -reads $utrim,$dtrim");
 			if (-e $filled_gaps){
 				print "Gap Filling Successful\n";
 				$scaffolds = $filled_gaps;
