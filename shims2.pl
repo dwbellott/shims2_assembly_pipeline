@@ -81,7 +81,7 @@ BEGIN {
 	$makeregions_default = $ENV{'SHIMS_MAKEREGIONS_EXEC'} || which('makeRegionsFile.perl');
 	$flash_default = $ENV{'SHIMS_FLASH_EXEC'} || which('flash');
 	$besst_default = $ENV{'SHIMS_BESST_EXEC'} || which('runBESST');
-	$gap2seq_default = $ENV{'SHIMS_GAP2SEQ_EXEC'} || which('Gap2Seq.sh');
+	$gap2seq_default = $ENV{'SHIMS_GAP2SEQ_EXEC'} || which('Gap2Seq');
 
 
 	$bowtie2_screen_params = "--very-sensitive-local --n-ceil L,0,1 -I 0 -X 2501";
