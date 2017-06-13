@@ -554,7 +554,7 @@ sub main() {
 	system("$samtools_exec index $scaffoldssrt");
 	system("$makeregions_exec $final");
 
-	#consed won't write to exisitng directory, so wipe those out if they exist.
+	#consed won't write to an exisitng directory, so wipe those out if they exist.
 
 	if (-e $consed_dir) {
 		rmtree([ "$consed_dir" ]) || print "$! : for $consed_dir\n";
@@ -625,6 +625,23 @@ sub load_fasta_contigs ($) {
 	return \%contigs;
 }
 
+#concatenates multiple fasta files into one for spades
+
+sub merge_fastas ($$$){
+	my ($text, $dir, $fr) = @_;
+	my $file = "$dir/$text.fa";
+	my $out = Bio::SeqIO->new(-file => ">$file", '-format' => 'Fasta');
+	my @fastas = @{$fr};
+	foreach my $f (@fastas){
+			my $in = Bio::SeqIO->new(	-format	=> 'fasta',
+																-file	=> $f);
+			while (my $c = $in->next_seq()){
+				$out->write_seq($c);
+			}
+	}
+	return $file;
+}
+
 #uses blasr and samtools to extract pacbio reads matching contigs
 
 sub screen_pacbio ($$$$){
@@ -646,18 +663,6 @@ sub screen_pacbio ($$$$){
 	}
 	close OUT;
 	return $output;
-}
-
-#concatenates multiple fasta files into one for spades
-#check portablity here, maybe use bioperl instead?
-
-sub merge_fastas ($$$){
-	my ($text, $dir,$fr) = @_;
-	my @fastas = @{$fr};
-	my $f = join(' ', @fastas);
-	my $out = "$dir/$text.fa";
-	system("cat $f > $out");
-	return $out;
 }
 
 #turn arrays of read files into string of arguments for spades
