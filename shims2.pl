@@ -93,11 +93,11 @@ BEGIN {
 ############### Declare Subroutines and Arguments
 sub version ();
 sub usage ();
-sub executables();
-sub check_executable($$$);
-sub screen_contamination($$$$$);
-sub mask_adapters($$$);
-sub make_illumina_arguments($$$);
+sub executables ();
+sub check_executable ($$$);
+sub screen_contamination ($$$$$);
+sub mask_adapters ($$$);
+sub make_illumina_arguments ($$$);
 sub merge_fastas($$$);
 sub screen_pacbio ($$$$);
 sub imagine ($$$$$$);
@@ -105,6 +105,11 @@ sub write_fasta_sequences ($$);
 sub quality_trim_contigs ($$);
 sub load_fasta_contigs ($);
 sub overlap_mates ($$$$$$);
+sub estimate_coverage_cutoff_from_vector ($$$);
+sub autofinish ($$$$$);
+sub autofinish_status ($);
+sub make_result_contig ($$$$$);
+sub fasta_output_autofinished ($$);
 sub main ();
 
 ############### Run the program
@@ -577,7 +582,7 @@ sub main() {
 
 #use bowtie and samtools to get the average depth across the vector sequence
 
-sub estimate_coverage_cutoff_from_vector {
+sub estimate_coverage_cutoff_from_vector ($$$) {
 	my ($vector, $ulist, $dlist) = @_;
 	my $ups = join(',',@{$ulist});
 	my $downs = join(',',@{$dlist});
@@ -949,7 +954,7 @@ Optional  arguments:
 
 #autofinisher -- complex code here below, need to double check it.
 
-sub autofinish {
+sub autofinish ($$$$$) {
 	my ($c, $contigs, $le, $re, $peptides) = @_;
 	my ($bestleft, $bestright);
 	my $r;
@@ -1621,7 +1626,7 @@ sub autofinish {
 
 #gives a progress report on ordering and orienting contigs.
 
-sub autofinish_status {
+sub autofinish_status ($) {
 	my ($r) = @_;
 	my ($nori, $nord, $nall, $nnum);
 	foreach my $id (keys(%{$r})){
@@ -1646,7 +1651,7 @@ sub autofinish_status {
 
 #assign order and orientation to contig for autofinisher
 
-sub make_result_contig{
+sub make_result_contig ($$$$$) {
 	my ($bioseq, $num, $ord, $ori, $str) = @_;
 	my $x = {
 		'bioseq'	=>	$bioseq,
@@ -1660,7 +1665,7 @@ sub make_result_contig{
 
 #writes output of autofinisher to fasta file.
 
-sub fasta_output_autofinished {
+sub fasta_output_autofinished ($$) {
 	my ($c, $o) = @_;
 	my $out = Bio::SeqIO->new(-file => ">$o", '-format' => 'Fasta');
 
