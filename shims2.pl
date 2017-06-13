@@ -1171,47 +1171,47 @@ sub autofinish {
 					if ($matrix->{$innerleft_id}->{$pep}->{'strand'} == 1){
 						### case 2a: inner left contig is reverse orientation; peptide is in forward orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
-                                                        if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerleft_id}->{$pep}->{'aa'}){
+            	if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerleft_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-                                                                if ($r->{$contig}->{'ordered'} = 1){
-                                                                }else{
+              	if ($r->{$contig}->{'ordered'} = 1){
+                }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
-                                                                        $r->{$contig}->{'number'} = $r->{$innerleft_id}->{'number'} + 1;
-                                                                        $r->{$contig}->{'ordered'} = 1;
-                                                                        if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = -1;
-                                                                        }else{
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = 1;
-                                                                        }
-                                                                        $nextleft_id = $contig;
-                                                                }
-                                                                last;
-                                                        }
-                                                }
+	                $r->{$contig}->{'number'} = $r->{$innerleft_id}->{'number'} + 1;
+                  $r->{$contig}->{'ordered'} = 1;
+                  if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
+                  	$r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = -1;
+                  }else{
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = 1;
+                  }
+                  $nextleft_id = $contig;
+                }
+                last;
+              }
+            }
 					}else{
 						### case 2b: inner left contig is reverse orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
-                                                        if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$innerleft_id}->{$pep}->{'aa'}){
+            	if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$innerleft_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-                                                                if ($r->{$contig}->{'ordered'} = 1){
-                                                                }else{
+                if ($r->{$contig}->{'ordered'} = 1){
+                }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
-                                                                        $r->{$contig}->{'number'} = $r->{$innerleft_id}->{'number'} + 1;
-                                                                        $r->{$contig}->{'ordered'} = 1;
-                                                                        if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = 1;
-                                                                        }else{
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = -1;
-                                                                        }
-                                                                        $nextleft_id = $contig;
-                                                                }
-                                                                last;
-                                                        }
-                                                }
+                  $r->{$contig}->{'number'} = $r->{$innerleft_id}->{'number'} + 1;
+                  $r->{$contig}->{'ordered'} = 1;
+                  if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
+                  	$r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = 1;
+                  }else{
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = -1;
+                  }
+                  $nextleft_id = $contig;
+                }
+              	last;
+              }
+            }
 					}
 				}
 				if ($nextleft_id){
@@ -1283,47 +1283,47 @@ sub autofinish {
 					if ($matrix->{$innerright_id}->{$pep}->{'strand'} == 1){
 						### case 2a: inner right contig is reverse orientation; peptide is in forward orientation
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
-                                                        if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$innerright_id}->{$pep}->{'aa'}){
+                if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$innerright_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-                                                                if ($r->{$contig}->{'ordered'} = 1){
-                                                                }else{
-									print "#autofinisher: peptide $pep bridges to contig $contig\n";
-                                                                        $r->{$contig}->{'number'} = $r->{$innerright_id}->{'number'} - 1;
-                                                                        $r->{$contig}->{'ordered'} = 1;
-                                                                        if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = -1;
-                                                                        }else{
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = 1;
-                                                                        }
-                                                                        $nextright_id = $contig;
-                                                                }
-                                                                last;
-                                                        }
-                                                }
+                	if ($r->{$contig}->{'ordered'} = 1){
+	                }else{
+										print "#autofinisher: peptide $pep bridges to contig $contig\n";
+                    $r->{$contig}->{'number'} = $r->{$innerright_id}->{'number'} - 1;
+                    $r->{$contig}->{'ordered'} = 1;
+                    if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
+                    	$r->{$contig}->{'oriented'} = 1;
+                      $r->{$contig}->{'strand'} = -1;
+                    }else{
+                      $r->{$contig}->{'oriented'} = 1;
+                      $r->{$contig}->{'strand'} = 1;
+                    }
+                    $nextright_id = $contig;
+                  }
+                last;
+              }
+            }
 					}else{
 						### case 2b: inner right contig is reverse orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
-                                                        if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerright_id}->{$pep}->{'aa'}){
+                if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerright_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-                                                                if ($r->{$contig}->{'ordered'} = 1){
-                                                                }else{
+                if ($r->{$contig}->{'ordered'} = 1){
+                }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
-                                                                        $r->{$contig}->{'number'} = $r->{$innerright_id}->{'number'} - 1;
-                                                                        $r->{$contig}->{'ordered'} = 1;
-                                                                        if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = 1;
-                                                                        }else{
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = -1;
-                                                                        }
-                                                                        $nextright_id = $contig;
-                                                                }
-                                                                last;
-                                                        }
-                                                }
+                  $r->{$contig}->{'number'} = $r->{$innerright_id}->{'number'} - 1;
+                  $r->{$contig}->{'ordered'} = 1;
+	                if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
+                  	$r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = 1;
+                  }else{
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = -1;
+                  }
+                  $nextright_id = $contig;
+                }
+                last;
+              }
+            }
 					}
 				}
 				if ($nextright_id){
@@ -1395,47 +1395,47 @@ sub autofinish {
 					if ($matrix->{$middleright_id}->{$pep}->{'strand'} == 1){
 						### case 2a: inner right contig is reverse orientation; peptide is in forward orientation
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
-                                                        if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$middleright_id}->{$pep}->{'aa'}){
+              if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$middleright_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-                                                                if ($r->{$contig}->{'ordered'} = 1){
-                                                                }else{
+	              if ($r->{$contig}->{'ordered'} = 1){
+                }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
-                                                                        $m->{$contig}->{'number'} = $m->{$middleright_id}->{'number'} - 1;
-                                                                        $r->{$contig}->{'ordered'} = 1;
-                                                                        if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = -1;
-                                                                        }else{
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = 1;
-                                                                        }
-                                                                        $nextright_id = $contig;
-                                                                }
-                                                                last;
-                                                        }
-                                                }
+                  $m->{$contig}->{'number'} = $m->{$middleright_id}->{'number'} - 1;
+                  $r->{$contig}->{'ordered'} = 1;
+                  if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = -1;
+                  }else{
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = 1;
+                  }
+                  $nextright_id = $contig;
+                }
+                last;
+              }
+            }
 					}else{
 						### case 2b: inner right contig is reverse orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
-                                                        if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleright_id}->{$pep}->{'aa'}){
+              if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleright_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-                                                                if ($r->{$contig}->{'ordered'} = 1){
-                                                                }else{
+                if ($r->{$contig}->{'ordered'} = 1){
+                }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
-                                                                        $m->{$contig}->{'number'} = $m->{$middleright_id}->{'number'} - 1;
-                                                                        $r->{$contig}->{'ordered'} = 1;
-                                                                        if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = 1;
-                                                                        }else{
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = -1;
-                                                                        }
-                                                                        $nextright_id = $contig;
-                                                                }
-                                                                last;
-                                                        }
-                                                }
+                  $m->{$contig}->{'number'} = $m->{$middleright_id}->{'number'} - 1;
+                  $r->{$contig}->{'ordered'} = 1;
+                  if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = 1;
+                  }else{
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = -1;
+                  }
+                  $nextright_id = $contig;
+                }
+                last;
+              }
+            }
 					}
 				}
 				if ($nextright_id){
@@ -1505,47 +1505,47 @@ sub autofinish {
 					if ($matrix->{$middleleft_id}->{$pep}->{'strand'} == 1){
 						### case 2a: inner left contig is reverse orientation; peptide is in forward orientation
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
-                                                        if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleleft_id}->{$pep}->{'aa'}){
+              if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleleft_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-                                                                if ($r->{$contig}->{'ordered'} = 1){
-                                                                }else{
+                if ($r->{$contig}->{'ordered'} = 1){
+                }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
-                                                                        $m->{$contig}->{'number'} = $m->{$middleleft_id}->{'number'} + 1;
-                                                                        $r->{$contig}->{'ordered'} = 1;
-                                                                        if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = -1;
-                                                                        }else{
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = 1;
-                                                                        }
-                                                                        $nextleft_id = $contig;
-                                                                }
-                                                                last;
-                                                        }
-                                                }
+                  $m->{$contig}->{'number'} = $m->{$middleleft_id}->{'number'} + 1;
+                  $r->{$contig}->{'ordered'} = 1;
+                  if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = -1;
+                  }else{
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = 1;
+                  }
+                  $nextleft_id = $contig;
+                }
+                last;
+              }
+            }
 					}else{
 						### case 2b: inner left contig is reverse orientation; peptide is in reverse orientation
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
-                                                        if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$middleleft_id}->{$pep}->{'aa'}){
+              if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$middleleft_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-                                                                if ($r->{$contig}->{'ordered'} = 1){
-                                                                }else{
+                if ($r->{$contig}->{'ordered'} = 1){
+                }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
-                                                                        $m->{$contig}->{'number'} = $m->{$middleleft_id}->{'number'} + 1;
-                                                                        $r->{$contig}->{'ordered'} = 1;
-                                                                        if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = 1;
-                                                                        }else{
-                                                                                $r->{$contig}->{'oriented'} = 1;
-                                                                                $r->{$contig}->{'strand'} = -1;
-                                                                        }
-                                                                        $nextleft_id = $contig;
-                                                                }
-                                                                last;
-                                                        }
-                                                }
+                  $m->{$contig}->{'number'} = $m->{$middleleft_id}->{'number'} + 1;
+                  $r->{$contig}->{'ordered'} = 1;
+                  if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = 1;
+                  }else{
+                    $r->{$contig}->{'oriented'} = 1;
+                    $r->{$contig}->{'strand'} = -1;
+                  }
+                  $nextleft_id = $contig;
+                }
+                last;
+              }
+            }
 					}
 				}
 				if ($nextleft_id){
