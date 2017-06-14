@@ -1,13 +1,16 @@
 #!/usr/bin/env perl
 
 ############### Libraries
+use FindBin qw($Bin);
+use lib "$Bin/perl5_modules/lib/perl5/";
+
 use strict;
+use Cwd;
+use Cwd 'abs_path';
 use File::Which;
 use File::Path 'rmtree';
 use DateTime;
 use Getopt::Long;
-use Cwd;
-use Cwd 'abs_path';
 use Bio::Seq;
 use Bio::Seq::SeqWithQuality;
 use Bio::SeqIO;
@@ -884,10 +887,10 @@ Optional  arguments:
 
 	Changing Executables:
 		--spades				<path to SPAdes: $spades_exec>
-	  --samtools			<path to samtools: $samtools_exec>
-	  --bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
-	  --bowtie2				<path to bowtie2: $bowtie2_exec>
-	  --blat					<path to blat: $blat_exec>
+		--samtools			<path to samtools: $samtools_exec>
+		--bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
+		--bowtie2				<path to bowtie2: $bowtie2_exec>
+		--blat					<path to blat: $blat_exec>
 		--cutadapt			<path to cutadapt: $cutadapt_exec>
 		--blasr					<path to blasr: $blasr_exec>
 		--consed				<path to consed: $consed_exec>
