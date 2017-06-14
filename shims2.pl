@@ -123,7 +123,6 @@ sub main() {
 		@pacbiofsr,
 		@finished,
 		@draft,
-		$image,
 		$left_end,
 		$right_end,
 		@peptides,
@@ -158,7 +157,6 @@ sub main() {
 		'pacbiofsr=s' => \@pacbiofsr,
 		'finished=s' => \@finished,
 		'draft=s' => \@draft,
-		'image=s' => \$image,
 		'left_end=s' => \$left_end,
 		'right_end=s' => \$right_end,
 		'peptides=s' => \@peptides,
@@ -829,19 +827,19 @@ sub version() {
 sub executables() {
 	print qq/
 Changing Executables:
-	--spades        <path to SPAdes: $spades_exec>
-  --samtools      <path to samtools: $samtools_exec>
-  --bowtie2build  <path to bowtie2-build: $bowtie2build_exec>
-  --bowtie2       <path to bowtie2: $bowtie2_exec>
-  --blat          <path to blat: $blat_exec>
-  --gzip          <path to gzip: $gzip_exec>
-	--cutadapt	<path to cutadapt: $cutadapt_exec>
-	--blasr		<path to blasr: $blasr_exec>
-	--consed	<path to consed: $consed_exec>
-	--makeregions	<path to consed's makeRegionsFile.perl: $makeregions_exec>
-	--flash		<path to flash: $flash_exec>
-	--besst		<path to besst: $besst_exec>
-	--gap2seq	<path to gap2seq: $gap2seq_exec>
+	--spades				<path to SPAdes: $spades_exec>
+  --samtools			<path to samtools: $samtools_exec>
+  --bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
+  --bowtie2				<path to bowtie2: $bowtie2_exec>
+  --blat					<path to blat: $blat_exec>
+  --gzip					<path to gzip: $gzip_exec>
+	--cutadapt			<path to cutadapt: $cutadapt_exec>
+	--blasr					<path to blasr: $blasr_exec>
+	--consed				<path to consed: $consed_exec>
+	--makeregions		<path to consed's makeRegionsFile.perl: $makeregions_exec>
+	--flash					<path to flash: $flash_exec>
+	--besst					<path to besst: $besst_exec>
+	--gap2seq				<path to gap2seq: $gap2seq_exec>
 
 To make the current executables the default:
 
@@ -876,40 +874,38 @@ USAGE: $0 -1 <upstream mates> -2 <downstream mates> -o <output directory> [optio
 Optional  arguments:
 
 	About this program:
-	-h --help	prints this message
-	-v --version	print version information
-	--executables	print default path to executables
+		-h --help			prints this message
+		-v --version	print version information
+		--executables	print default path to executables
 
 	Screening Contamination:
-	--vector	<bowtie index of vector sequences>
-	--host		<bowtie index of host cell genome>
-	--adapter	<solexa adapter sequences>
+		--vector	<bowtie index of vector sequences>
+		--host		<bowtie index of host cell genome>
+		--adapter	<Illumina adapter sequences>
 
 	Increasing Contiguity:
-	--pacbioroi	<fastq sequences of pacbio reads of insert>>
-	--pacbiofsr	<fastq sequences of pacbio filtered subreads>
-	--finished	<fasta sequences of finished neighbors>
-	--draft		<fasta sequences of draft neighbors>
-	--left_end	<fasta sequences of clone ends>
-	--right_end	<fasta sequences of clone ends>
-	--peptides	<fasta sequences of peptides>
-	--image		<number of iterations of mapping and assembly for gap elimination>
-
+		--pacbioroi	<fastq sequences of pacbio reads of insert>>
+		--pacbiofsr	<fastq sequences of pacbio filtered subreads>
+		--finished	<fasta sequences of finished neighbors>
+		--draft			<fasta sequences of draft neighbors>
+		--left_end	<fasta sequences of clone ends>
+		--right_end	<fasta sequences of clone ends>
+		--peptides	<fasta sequences of peptides>
 
 	Changing Executables:
-	--spades	<path to SPAdes: $spades_exec>
-	--samtools	<path to samtools: $samtools_exec>
-	--bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
-	--bowtie2	<path to bowtie2: $bowtie2_exec>
-	--blat		<path to blat: $blat_exec>
-	--gzip		<path to gzip: $gzip_exec>
-	--cutadapt	<path to cutadapt: $cutadapt_exec>
-	--blasr		<path to blasr: $blasr_exec>
-	--consed	<path to consed: $consed_exec>
-	--makeregions	<path to consed's makeRegionsFile.perl: $makeregions_exec>
-	--flash		<path to flash: $flash_exec>
-	--besst		<path to besst: $besst_exec>
-	--gap2seq	<path to gap2seq: $gap2seq_exec>
+		--spades				<path to SPAdes: $spades_exec>
+	  --samtools			<path to samtools: $samtools_exec>
+	  --bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
+	  --bowtie2				<path to bowtie2: $bowtie2_exec>
+	  --blat					<path to blat: $blat_exec>
+	  --gzip					<path to gzip: $gzip_exec>
+		--cutadapt			<path to cutadapt: $cutadapt_exec>
+		--blasr					<path to blasr: $blasr_exec>
+		--consed				<path to consed: $consed_exec>
+		--makeregions		<path to consed's makeRegionsFile.perl: $makeregions_exec>
+		--flash					<path to flash: $flash_exec>
+		--besst					<path to besst: $besst_exec>
+		--gap2seq				<path to gap2seq: $gap2seq_exec>
 /;
 
 	return 1;
