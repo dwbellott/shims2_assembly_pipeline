@@ -14,6 +14,7 @@ use Bio::Seq;
 use Bio::Seq::SeqWithQuality;
 use Bio::SeqIO;
 use Statistics::Descriptive;
+use IO::Compress::Gzip qw($GzipError);
 
 
 use vars qw/$VERSION/;
@@ -22,7 +23,6 @@ use vars qw/$samtools_default/;
 use vars qw/$bowtie2build_default/;
 use vars qw/$bowtie2_default/;
 use vars qw/$blat_default/;
-use vars qw/$gzip_default/;
 use vars qw/$cutadapt_default/;
 use vars qw/$blasr_default/;
 use vars qw/$consed_default/;
@@ -36,7 +36,6 @@ use vars qw/$samtools_exec/;
 use vars qw/$bowtie2build_exec/;
 use vars qw/$bowtie2_exec/;
 use vars qw/$blat_exec/;
-use vars qw/$gzip_exec/;
 use vars qw/$cutadapt_exec/;
 use vars qw/$blasr_exec/;
 use vars qw/$consed_exec/;
@@ -62,7 +61,6 @@ BEGIN {
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
 	$bowtie2_default = $ENV{'SHIMS_BOWTIE2_EXEC'} || which('bowtie2');
 	$blat_default = $ENV{'SHIMS_BLAT_EXEC'} || which('blat');
-	$gzip_default = $ENV{'SHIMS_GZIP_EXEC'} || which('gzip');
 	$cutadapt_default = $ENV{'SHIMS_CUTADAPT_EXEC'} || which('cutadapt');
 	$blasr_default = $ENV{'SHIMS_BLASR_EXEC'} || which('blasr');
 	$consed_default = $ENV{'SHIMS_CONSED_EXEC'} || which('consed');
@@ -131,7 +129,6 @@ sub main() {
 		$bowtie2build,
 		$bowtie2,
 		$blat,
-		$gzip,
 		$cutadapt,
 		$blasr,
 		$consed,
@@ -165,7 +162,6 @@ sub main() {
 		'bowtie2build=s' => \$bowtie2build,
 		'bowtie2=s' => \$bowtie2,
 		'blat=s' => \$blat,
-		'gzip=s' => \$gzip,
 		'cutadapt=s' => \$cutadapt,
 		'blasr=s' => \$blasr,
 		'consed=s' => \$consed,
@@ -190,7 +186,6 @@ sub main() {
 	($bowtie2build_exec, $executables) = check_executable($bowtie2build, $bowtie2build_default, $executables);
 	($bowtie2_exec, $executables) = check_executable($bowtie2, $bowtie2_default, $executables);
 	($blat_exec, $executables) = check_executable($blat, $blat_default, $executables);
-	($gzip_exec, $executables) = check_executable($gzip, $gzip_default, $executables);
 	($cutadapt_exec, $executables) = check_executable($cutadapt, $cutadapt_default, $executables);
 	($blasr_exec, $executables) = check_executable($blasr, $blasr_default, $executables);
 	($consed_exec, $executables) = check_executable($consed, $consed_default, $executables);
@@ -627,7 +622,7 @@ sub screen_pacbio ($$$$){
 	my ($text, $dir, $scaffolds, $pbr) = @_;
 	my @pacbio = @{$pbr};
 	my $output = "$dir/$text.fq.gz";
-	open (OUT, "| $gzip_exec -9cf > $output") || die "couldn't write outfile: $output\n";
+	my $z = new IO::Compress::Gzip $output, Level => 9 or die "couldn't write outfile: $output\nIO::Compress::Gzip failed: $GzipError\n";
 	foreach my $lib (1 .. @pacbio){
 		my $sam = "$dir/$lib.$text.sam";
 		system("$blasr_exec $pacbio[$lib-1] $scaffolds -bestn 1 -sam -out $sam");
@@ -635,12 +630,12 @@ sub screen_pacbio ($$$$){
 		open (SAM, "$samtools_exec view -S -F 4 -F 256 $sam|") || die "failed converting samfile: $sam to fastq\n";
 		while (<SAM>){
 			my @line = split(/\s+/, $_);
-			print OUT "@"."$line[0]\n$line[9]\n+\n$line[10]\n";
+			print $z "@"."$line[0]\n$line[9]\n+\n$line[10]\n";
 		}
 		close SAM;
 
 	}
-	close OUT;
+	close $z;
 	return $output;
 }
 
@@ -728,8 +723,8 @@ sub screen_contamination ($$$$$) {
 		my ($ufqgz, $dfqgz) = ("$dir/$lib.$text.1.fq.gz", "$dir/$lib.$text.2.fq.gz");
 		print "$ufqgz, $dfqgz\n";
 
-		open (UOUT, "| $gzip_exec -9c >$ufqgz") || die "can't write $text screened reads to $ufqgz\n";
-		open (DOUT, "| $gzip_exec -9c >$dfqgz") || die "can't write $text screened reads to $dfqgz\n";
+		my $uz = new IO::Compress::Gzip $ufqgz, Level => 9 or die "can't write $text screened reads to $ufqgz\nIO::Compress::Gzip failed: $GzipError\n";
+		my $dz = new IO::Compress::Gzip $dfqgz, Level => 9 or die "can't write $text screened reads to $dfqgz\nIO::Compress::Gzip failed: $GzipError\n";
 
 		open (SAM, "$bowtie2_exec $bowtie2_screen_params -x $index -1 $u -2 $d |") || die "can't run bowtie to screen $text\n";
 		while (<SAM>){
@@ -739,19 +734,18 @@ sub screen_contamination ($$$$$) {
 				if ($line[1] & $unmaps && $line[1] & $unmapp){
 					push(@reads, length($line[9]));
 					if ($line[1] & $firstp){
-						print UOUT "@"."$line[0]\n$line[9]\n+$line[0]\n$line[10]\n";
+						print $uz "@"."$line[0]\n$line[9]\n+$line[0]\n$line[10]\n";
 					}elsif ($line[1] & $secndp){
-						print DOUT "@"."$line[0]\n$line[9]\n+$line[0]\n$line[10]\n";
+						print $dz "@"."$line[0]\n$line[9]\n+$line[0]\n$line[10]\n";
 					}
 				}elsif ($line[8]){
-					#print "$line[8]\n";
 					push(@frags, abs($line[8]));
 				}
 			}
 		}
 		close SAM;
-		close UOUT;
-		close DOUT;
+		close $uz;
+		close $dz;
 		push(@firsts, $ufqgz);
 		push(@seconds, $dfqgz);
 	}
@@ -832,7 +826,6 @@ Changing Executables:
   --bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
   --bowtie2				<path to bowtie2: $bowtie2_exec>
   --blat					<path to blat: $blat_exec>
-  --gzip					<path to gzip: $gzip_exec>
 	--cutadapt			<path to cutadapt: $cutadapt_exec>
 	--blasr					<path to blasr: $blasr_exec>
 	--consed				<path to consed: $consed_exec>
@@ -848,7 +841,6 @@ export SHIMS_SAMTOOLS_EXEC=$samtools_exec
 export SHIMS_BOWTIE2BUILD_EXEC=$bowtie2build_exec
 export SHIMS_BOWTIE2_EXEC=$bowtie2_exec
 export SHIMS_BLAT_EXEC=$blat_exec
-export SHIMS_GZIP_EXEC=$gzip_exec
 export SHIMS_CUTADAPT_EXEC=$cutadapt_exec
 export SHIMS_BLASR_EXEC=$blasr_exec
 export SHIMS_CONSED_EXEC=$consed_exec
@@ -898,7 +890,6 @@ Optional  arguments:
 	  --bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
 	  --bowtie2				<path to bowtie2: $bowtie2_exec>
 	  --blat					<path to blat: $blat_exec>
-	  --gzip					<path to gzip: $gzip_exec>
 		--cutadapt			<path to cutadapt: $cutadapt_exec>
 		--blasr					<path to blasr: $blasr_exec>
 		--consed				<path to consed: $consed_exec>
