@@ -22,7 +22,6 @@ use vars qw/$samtools_default/;
 use vars qw/$bowtie2build_default/;
 use vars qw/$bowtie2_default/;
 use vars qw/$blat_default/;
-use vars qw/$awk_default/;
 use vars qw/$gzip_default/;
 use vars qw/$cutadapt_default/;
 use vars qw/$blasr_default/;
@@ -37,7 +36,6 @@ use vars qw/$samtools_exec/;
 use vars qw/$bowtie2build_exec/;
 use vars qw/$bowtie2_exec/;
 use vars qw/$blat_exec/;
-use vars qw/$awk_exec/;
 use vars qw/$gzip_exec/;
 use vars qw/$cutadapt_exec/;
 use vars qw/$blasr_exec/;
@@ -64,7 +62,6 @@ BEGIN {
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
 	$bowtie2_default = $ENV{'SHIMS_BOWTIE2_EXEC'} || which('bowtie2');
 	$blat_default = $ENV{'SHIMS_BLAT_EXEC'} || which('blat');
-	$awk_default = $ENV{'SHIMS_AWK_EXEC'} || which('awk');
 	$gzip_default = $ENV{'SHIMS_GZIP_EXEC'} || which('gzip');
 	$cutadapt_default = $ENV{'SHIMS_CUTADAPT_EXEC'} || which('cutadapt');
 	$blasr_default = $ENV{'SHIMS_BLASR_EXEC'} || which('blasr');
@@ -135,7 +132,6 @@ sub main() {
 		$bowtie2build,
 		$bowtie2,
 		$blat,
-		$awk,
 		$gzip,
 		$cutadapt,
 		$blasr,
@@ -171,7 +167,6 @@ sub main() {
 		'bowtie2build=s' => \$bowtie2build,
 		'bowtie2=s' => \$bowtie2,
 		'blat=s' => \$blat,
-		'awk=s' => \$awk,
 		'gzip=s' => \$gzip,
 		'cutadapt=s' => \$cutadapt,
 		'blasr=s' => \$blasr,
@@ -198,7 +193,6 @@ sub main() {
 	($bowtie2_exec, $executables) = check_executable($bowtie2, $bowtie2_default, $executables);
 	($blat_exec, $executables) = check_executable($blat, $blat_default, $executables);
 	($gzip_exec, $executables) = check_executable($gzip, $gzip_default, $executables);
-	($awk_exec, $executables) = check_executable($awk, $awk_default, $executables);
 	($cutadapt_exec, $executables) = check_executable($cutadapt, $cutadapt_default, $executables);
 	($blasr_exec, $executables) = check_executable($blasr, $blasr_default, $executables);
 	($consed_exec, $executables) = check_executable($consed, $consed_default, $executables);
@@ -840,7 +834,6 @@ Changing Executables:
   --bowtie2build  <path to bowtie2-build: $bowtie2build_exec>
   --bowtie2       <path to bowtie2: $bowtie2_exec>
   --blat          <path to blat: $blat_exec>
-	--awk		<path to awk: $awk_exec>
   --gzip          <path to gzip: $gzip_exec>
 	--cutadapt	<path to cutadapt: $cutadapt_exec>
 	--blasr		<path to blasr: $blasr_exec>
@@ -857,7 +850,6 @@ export SHIMS_SAMTOOLS_EXEC=$samtools_exec
 export SHIMS_BOWTIE2BUILD_EXEC=$bowtie2build_exec
 export SHIMS_BOWTIE2_EXEC=$bowtie2_exec
 export SHIMS_BLAT_EXEC=$blat_exec
-export SHIMS_AWK_EXEC=$awk_exec
 export SHIMS_GZIP_EXEC=$gzip_exec
 export SHIMS_CUTADAPT_EXEC=$cutadapt_exec
 export SHIMS_BLASR_EXEC=$blasr_exec
@@ -910,7 +902,6 @@ Optional  arguments:
 	--bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
 	--bowtie2	<path to bowtie2: $bowtie2_exec>
 	--blat		<path to blat: $blat_exec>
-	--awk		<path to awk: $awk_exec>
 	--gzip		<path to gzip: $gzip_exec>
 	--cutadapt	<path to cutadapt: $cutadapt_exec>
 	--blasr		<path to blasr: $blasr_exec>
