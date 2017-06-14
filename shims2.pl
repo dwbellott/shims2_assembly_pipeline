@@ -4,8 +4,6 @@
 use strict;
 use File::Which;
 use File::Path 'rmtree';
-use File::Find;
-use List::Util 'sum';
 use DateTime;
 use Getopt::Long;
 use Cwd;
