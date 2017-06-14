@@ -22,8 +22,6 @@ use vars qw/$samtools_default/;
 use vars qw/$bowtie2build_default/;
 use vars qw/$bowtie2_default/;
 use vars qw/$blat_default/;
-use vars qw/$velveth_default/;
-use vars qw/$velvetg_default/;
 use vars qw/$grep_default/;
 use vars qw/$awk_default/;
 use vars qw/$gzip_default/;
@@ -40,8 +38,6 @@ use vars qw/$samtools_exec/;
 use vars qw/$bowtie2build_exec/;
 use vars qw/$bowtie2_exec/;
 use vars qw/$blat_exec/;
-use vars qw/$velveth_exec/;
-use vars qw/$velvetg_exec/;
 use vars qw/$grep_exec/;
 use vars qw/$awk_exec/;
 use vars qw/$gzip_exec/;
@@ -70,8 +66,6 @@ BEGIN {
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
 	$bowtie2_default = $ENV{'SHIMS_BOWTIE2_EXEC'} || which('bowtie2');
 	$blat_default = $ENV{'SHIMS_BLAT_EXEC'} || which('blat');
-	$velveth_default = $ENV{'SHIMS_VELVETH_EXEC'} || which('velveth');
-	$velvetg_default = $ENV{'SHIMS_VELVETG_EXEC'} || which('velvetg');
 	$grep_default = $ENV{'SHIMS_GREP_EXEC'} || which('grep');
 	$awk_default = $ENV{'SHIMS_AWK_EXEC'} || which('awk');
 	$gzip_default = $ENV{'SHIMS_GZIP_EXEC'} || which('gzip');
@@ -144,8 +138,6 @@ sub main() {
 		$bowtie2build,
 		$bowtie2,
 		$blat,
-		$velveth,
-		$velvetg,
 		$grep,
 		$awk,
 		$gzip,
@@ -183,8 +175,6 @@ sub main() {
 		'bowtie2build=s' => \$bowtie2build,
 		'bowtie2=s' => \$bowtie2,
 		'blat=s' => \$blat,
-		'velveth=s' => \$velveth,
-		'velvetg=s' => \$velvetg,
 		'grep=s' => \$grep,
 		'awk=s' => \$awk,
 		'gzip=s' => \$gzip,
@@ -212,8 +202,6 @@ sub main() {
 	($bowtie2build_exec, $executables) = check_executable($bowtie2build, $bowtie2build_default, $executables);
 	($bowtie2_exec, $executables) = check_executable($bowtie2, $bowtie2_default, $executables);
 	($blat_exec, $executables) = check_executable($blat, $blat_default, $executables);
-	($velveth_exec, $executables) = check_executable($velveth, $velveth_default, $executables);
-	($velvetg_exec, $executables) = check_executable($velvetg, $velvetg_default, $executables);
 	($grep_exec, $executables) = check_executable($grep, $grep_default, $executables);
 	($gzip_exec, $executables) = check_executable($gzip, $gzip_default, $executables);
 	($awk_exec, $executables) = check_executable($awk, $awk_default, $executables);
@@ -858,8 +846,6 @@ Changing Executables:
   --bowtie2build  <path to bowtie2-build: $bowtie2build_exec>
   --bowtie2       <path to bowtie2: $bowtie2_exec>
   --blat          <path to blat: $blat_exec>
-	--velveth	<path to velveth: $velveth_exec>
-	--velvetg	<path to velvetg: $velvetg_exec>
   --grep          <path to grep: $grep_exec>
 	--awk		<path to awk: $awk_exec>
   --gzip          <path to gzip: $gzip_exec>
@@ -878,8 +864,6 @@ export SHIMS_SAMTOOLS_EXEC=$samtools_exec
 export SHIMS_BOWTIE2BUILD_EXEC=$bowtie2build_exec
 export SHIMS_BOWTIE2_EXEC=$bowtie2_exec
 export SHIMS_BLAT_EXEC=$blat_exec
-export SHIMS_VELVETH_EXEC=$velveth_exec
-export SHIMS_VELVETG_EXEC=$velvetg_exec
 export SHIMS_GREP_EXEC=$grep_exec
 export SHIMS_AWK_EXEC=$awk_exec
 export SHIMS_GZIP_EXEC=$gzip_exec
@@ -934,8 +918,6 @@ Optional  arguments:
 	--bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
 	--bowtie2	<path to bowtie2: $bowtie2_exec>
 	--blat		<path to blat: $blat_exec>
-	--velveth	<path to velveth: $velveth_exec>
-	--velvetg	<path to velvetg: $velvetg_exec>
 	--grep		<path to grep: $grep_exec>
 	--awk		<path to awk: $awk_exec>
 	--gzip		<path to gzip: $gzip_exec>
