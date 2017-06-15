@@ -33,7 +33,7 @@ All the required perl modules are packaged in the /vendor/cache directory for yo
 Navigate to the directory where you want to install the pipeline and type:
 
 ```
-git clone https://git.wi.mit.edu/winstons_projects/shims2_assembly_pipeline
+git clone https://git.wi.mit.edu/winstons_projects/shims2_assembly_pipeline.git
 ```
 
 You will be prompted for your username and password.
