@@ -1,0 +1,10 @@
+requires 'perl', '5.008001';
+requires 'strict', '1.04';
+requires 'Cwd', '3.62';
+requires 'File::Which', '1.21';
+requires 'File::Path', '2.14';
+requires 'DateTime', '1.43';
+requires 'Getopt::Long', '2.5';
+requires 'Bio::Root::Version', '1.0';
+requires 'Statistics::Descriptive', '3.0612';
+requires 'IO::Compress::Gzip', '2.074';
