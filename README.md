@@ -24,8 +24,28 @@ If you use [Docker](https://www.docker.com/), you may be pleased to learn that s
 - [Gap2seq](https://quay.io/repository/biocontainers/gap2seq)
 - [blat](https://quay.io/repository/biocontainers/blat)
 
-All the required perl modules are packaged in ./perl5_modules for your convenience.
+Your computer should already have perl installed
 
+All the required perl modules are packaged in the /vendor/cache directory for your convenience.
+
+### Installation
+
+Navigate to the directory where you want to install the pipeline and type:
+
+```
+git clone https://git.wi.mit.edu/winstons_projects/shims2_assembly_pipeline
+```
+
+You will be prompted for your username and password.
+
+After the download completes, type:
+
+```
+cd shims2_assembly_pipeline
+vendor/bin/carton install --cached --deployment
+```
+
+To install the cached perl modules.
 
 ### Usage
 
