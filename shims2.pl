@@ -56,7 +56,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.1.25';
+	$VERSION = '1.1.26';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -822,18 +822,18 @@ sub version() {
 sub executables() {
 	print qq/
 Changing Executables:
-	--spades				<path to SPAdes: $spades_exec>
-  --samtools			<path to samtools: $samtools_exec>
-  --bowtie2build	<path to bowtie2-build: $bowtie2build_exec>
-  --bowtie2				<path to bowtie2: $bowtie2_exec>
-  --blat					<path to blat: $blat_exec>
-	--cutadapt			<path to cutadapt: $cutadapt_exec>
-	--blasr					<path to blasr: $blasr_exec>
-	--consed				<path to consed: $consed_exec>
-	--makeregions		<path to consed's makeRegionsFile.perl: $makeregions_exec>
-	--flash					<path to flash: $flash_exec>
-	--besst					<path to besst: $besst_exec>
-	--gap2seq				<path to gap2seq: $gap2seq_exec>
+	--spades        <path to SPAdes: $spades_exec>
+	--samtools      <path to samtools: $samtools_exec>
+	--bowtie2build  <path to bowtie2-build: $bowtie2build_exec>
+	--bowtie2       <path to bowtie2: $bowtie2_exec>
+	--blat          <path to blat: $blat_exec>
+	--cutadapt      <path to cutadapt: $cutadapt_exec>
+	--blasr         <path to blasr: $blasr_exec>
+	--consed        <path to consed: $consed_exec>
+	--makeregions   <path to consed's makeRegionsFile.perl: $makeregions_exec>
+	--flash         <path to flash: $flash_exec>
+	--besst         <path to besst: $besst_exec>
+	--gap2seq       <path to gap2seq: $gap2seq_exec>
 
 To make the current executables the default:
 
