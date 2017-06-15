@@ -2,7 +2,7 @@
 
 ############### Libraries
 use FindBin qw($Bin);
-use lib "$Bin/perl5_modules/lib/perl5/";
+use lib "$Bin/local/";
 
 use strict;
 use Cwd;
