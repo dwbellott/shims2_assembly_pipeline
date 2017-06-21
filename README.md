@@ -1,4 +1,12 @@
-### Prerequisites:
+### Description
+
+Pipeline for assembling large-insert clones (e.g. BACs, Fosmids) from Illumina data.
+
+Software and documentation written by Daniel W. Bellott. For further discussion see:
+
+Cho et al. "Cost-effective, high-throughput, single-haplotype iterative mapping and sequencing for complex genomic structures", 2017
+
+### Prerequisites
 
 Install the following tools used by the pipeline:
 
