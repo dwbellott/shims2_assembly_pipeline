@@ -88,7 +88,7 @@ sub make_illumina_arguments ($$$);
 sub merge_fastas($$$);
 sub screen_pacbio ($$$$);
 sub imagine ($$$$$$);
-sub write_fasta_sequences ($$);
+sub write_fasta_sequences ($$$);
 sub quality_trim_contigs ($$);
 sub load_fasta_contigs ($);
 sub overlap_mates ($$$$$$);
@@ -359,7 +359,7 @@ sub main() {
 		push(@temporary, $trusted);
 	}
 
-	#are ther any less reliable draft sequences?
+	#are there any less reliable draft sequences?
 
 	my $untrusted = "";
 	if (@draft){
@@ -503,7 +503,7 @@ sub main() {
 	#load up the output of BESST and Gap2Seq and write in the output folder
 
 	my $contigs = load_fasta_contigs($scaffolds);
-	write_fasta_sequences($contigs, $final);
+	write_fasta_sequences($contigs, $final, $avg_read);
 	my $input_contigs = load_fasta_contigs($final);
 
 	#if there are end sequences, try to order and orient remaining contigs
@@ -575,13 +575,16 @@ sub estimate_coverage_cutoff_from_vector ($$$) {
 
 #uses bioperl to write sequences in fasta format
 
-sub write_fasta_sequences ($$){
-	my ($contigs, $file) = @_;
+sub write_fasta_sequences ($$$){
+	my ($contigs, $file, $avg_read_len) = @_;
 	my $out = Bio::SeqIO->new(-file => ">$file", '-format' => 'Fasta');
 	my $n = 0;
 	foreach my $id (keys(%$contigs)){
-		$out->write_seq($contigs->{$id});
-		$n++
+		#get rid of 128bp junk contigs
+		unless ($contigs->{$id}->length() < $avg_read_len){
+			$out->write_seq($contigs->{$id});
+			$n++
+		}
 	}
 	return $n;
 }
