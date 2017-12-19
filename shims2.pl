@@ -45,6 +45,8 @@ use vars qw/$flash_exec/;
 use vars qw/$besst_exec/;
 use vars qw/$gap2seq_exec/;
 
+use vars qw/$gap2seq_timeout/;
+
 use vars qw/$bowtie2_screen_params/;
 use vars qw/$cutadapt_params/;
 use vars qw/$adapter_default/;
@@ -68,8 +70,9 @@ BEGIN {
 	$makeregions_default = $ENV{'SHIMS_MAKEREGIONS_EXEC'} || which('makeRegionsFile.perl');
 	$flash_default = $ENV{'SHIMS_FLASH_EXEC'} || which('flash');
 	$besst_default = $ENV{'SHIMS_BESST_EXEC'} || which('runBESST');
-	$gap2seq_default = $ENV{'SHIMS_GAP2SEQ_EXEC'} || which('Gap2Seq');
+	$gap2seq_default = $ENV{'SHIMS_GAP2SEQ_EXEC'} || which('Gap2Seq.sh');
 
+	$gap2seq_timeout = 3600;
 
 	$bowtie2_screen_params = "--very-sensitive-local --n-ceil L,0,1 -I 0 -X 2501";
 	$cutadapt_params = "--mask-adapter --quiet --match-read-wildcards -q 10 --minimum-length 22";
@@ -482,7 +485,19 @@ sub main() {
 			print "Scaffolding successful\n";
 			print "Filling gaps with illumina reads\n";
 			$scaffolds = $besst_scaffolds;
-			system("$gap2seq_exec -scaffolds $besst_scaffolds -filled $filled_gaps -reads $utrim,$dtrim");
+			eval {
+				local $SIG{ALRM} = sub { die "alarm\n" };
+				alarm $gap2seq_timeout;
+				system("$gap2seq_exec -scaffolds $besst_scaffolds -filled $filled_gaps -reads $utrim,$dtrim");
+				alarm 0;
+		  };
+			if ($@){
+				if ($@ eq"alarm\n"){
+					print "$gap2seq_exec took more than $gap2seq_timeout seconds; that's too long\n"
+				}else{
+					print "Unexpected error from $gap2seq_exec: $@\n";
+				}
+			}
 			if (-e $filled_gaps){
 				print "Gap Filling Successful\n";
 				$scaffolds = $filled_gaps;
