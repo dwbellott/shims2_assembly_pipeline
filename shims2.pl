@@ -533,14 +533,10 @@ sub main() {
 
 	#align reads to final.fasta to produce output for consed
 
-	my $scaffoldssam = "$output_dir/final.sam";
-	my $scaffoldsbam = "$output_dir/final.bam";
 	my $scaffoldssrt = "$output_dir/final.srt.bam";
 	my $consed_dir = "$output_dir/consed";
 	system("$bowtie2build_exec -q $final $output_dir/final");
-	system("$bowtie2_exec -I 0 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -1 $ufilt -2 $dfilt -S $scaffoldssam");
-	system("$samtools_exec view -b -S $scaffoldssam > $scaffoldsbam");
-	system("$samtools_exec sort -o $scaffoldssrt $scaffoldsbam");
+	system("$bowtie2_exec -I 0 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -1 $ufilt -2 $dfilt | $samtools_exec view -b -S - | $samtools_exec sort -o $scaffoldssrt -");
 	system("$samtools_exec index $scaffoldssrt");
 	system("$makeregions_exec $final");
 
@@ -643,10 +639,7 @@ sub screen_pacbio ($$$$){
 	my $output = "$dir/$text.fq.gz";
 	my $z = new IO::Compress::Gzip $output, Level => 9 or die "couldn't write outfile: $output\nIO::Compress::Gzip failed: $GzipError\n";
 	foreach my $lib (1 .. @pacbio){
-		my $sam = "$dir/$lib.$text.sam";
-		system("$blasr_exec $pacbio[$lib-1] $scaffolds -bestn 1 -sam -out $sam");
-		push (@temporary, $sam);
-		open (SAM, "$samtools_exec view -S -F 4 -F 256 $sam|") || die "failed converting samfile: $sam to fastq\n";
+		open (SAM, "$blasr_exec $pacbio[$lib-1] $scaffolds -bestn 1 -sam | $samtools_exec view -S -F 4 -F 256 - |") || die "failed aligning $pacbio[$lib-1] to $scaffolds\n";
 		while (<SAM>){
 			my @line = split(/\s+/, $_);
 			print $z "@"."$line[0]\n$line[9]\n+\n$line[10]\n";
