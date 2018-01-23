@@ -468,13 +468,25 @@ sub main() {
 	my $besst_bowtie_index = "$output_dir/scaffolding";
 	my $besst_bowtie_output = "$output_dir/scaffolding.srt.bam";
 
+	my @besst_mergeable = ();
+
 	#align reads back to scaffolds, then use that alignment as input to BESST
 	#then fill gaps in BESST scaffolds with Gap2Seq
 
 	if (-e $scaffolds){
 		print "Scaffolding with illumina reads\n";
 		system("$bowtie2build_exec -q $scaffolds $besst_bowtie_index");
-		system("$bowtie2_exec -x $besst_bowtie_index -1 $utrim -2 $dtrim | $samtools_exec view -b -S - | $samtools_exec sort - >$besst_bowtie_output");
+
+		#workaround for bowtie2 only aligning the first fastq file when many are supplied
+		if (@utrimmed){
+			foreach my $i (0 .. $#utrimmed){
+				system("$bowtie2_exec -x $besst_bowtie_index -1 $utrimmed[$i] -2 $dtrimmed[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$besst_bowtie_output.$i");
+				push(@besst_mergeable, "$besst_bowtie_output.$i");
+			}
+		}
+		my $besst_inbams = join(" ", @besst_mergeable);
+		system("$samtools_exec merge $besst_bowtie_output $besst_inbams");
+		push(@temporary,@besst_mergeable);
 		system("$samtools_exec index $besst_bowtie_output");
 		system("$besst_exec -c $scaffolds -f $besst_bowtie_output -o $output_dir --orientation fr");
 		my $besst_scaffolds = "$output_dir/BESST_output/pass1/Scaffolds_pass1.fa";
@@ -545,14 +557,14 @@ sub main() {
 
 	if (@singles){
 		foreach my $i (0 .. $#singles){
-			system("bowtie2 -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -U $singles[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$singlebam.$i");
+			system("$bowtie2_exec -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -U $singles[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$singlebam.$i");
 			push(@mergeable, "$singlebam.$i");
 		}
 	}
 
 	if (@upstream_mates){
 		foreach my $i (0 .. $#upstream_mates){
-			system("bowtie2 -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -1 $upstream_mates[$i] -2 $downstream_mates[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$pairedbam.$i");
+			system("$bowtie2_exec -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -1 $upstream_mates[$i] -2 $downstream_mates[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$pairedbam.$i");
 			push(@mergeable, "$pairedbam.$i");
 		}
 	}
