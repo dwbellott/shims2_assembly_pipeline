@@ -56,7 +56,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.1.26';
+	$VERSION = '1.1.27';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -522,12 +522,37 @@ sub main() {
 	my $scaffoldsbam = "$output_dir/final.bam";
 	my $scaffoldssrt = "$output_dir/final.srt.bam";
 	my $consed_dir = "$output_dir/consed";
+
 	system("$bowtie2build_exec -q $final $output_dir/final");
-	system("$bowtie2_exec -I 0 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -1 $ufilt -2 $dfilt -S $scaffoldssam");
-	system("$samtools_exec view -b -S $scaffoldssam > $scaffoldsbam");
-	system("$samtools_exec sort -o $scaffoldssrt $scaffoldsbam");
+
+	my $singlebam = $scaffoldssrt.".single";
+	my $pairedbam = $scaffoldssrt.".paired";
+	my @mergeable = ();
+
+
+	#workaround for bowtie2 only aligning the first fastq file when many are supplied
+
+	if (@singles){
+		foreach my $i (0 .. $#singles){
+			system("bowtie2 -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -U $singles[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$singlebam.$i");
+			push(@mergeable, "$singlebam.$i");
+		}
+	}
+
+	if (@upstream_mates){
+		foreach my $i (0 .. $#upstream_mates){
+			system("bowtie2 -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -1 $upstream_mates[$i] -2 $downstream_mates[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$pairedbam.$i");
+			push(@mergeable, "$pairedbam.$i");
+		}
+	}
+
+	my $inbams = join(" ", @mergeable);
+
+  system("$samtools_exec merge $scaffoldssrt $inbams");
 	system("$samtools_exec index $scaffoldssrt");
 	system("$makeregions_exec $final");
+
+	push(@temporary,@mergeable);
 
 	#consed won't write to an exisitng directory, so wipe those out if they exist.
 
