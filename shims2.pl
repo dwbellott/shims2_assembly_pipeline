@@ -46,7 +46,6 @@ use vars qw/$besst_exec/;
 use vars qw/$gap2seq_exec/;
 
 use vars qw/$gap2seq_timeout/;
-
 use vars qw/$bowtie2_screen_params/;
 use vars qw/$cutadapt_params/;
 use vars qw/$adapter_default/;
@@ -58,7 +57,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.1.27';
+	$VERSION = '1.1.28';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -73,7 +72,6 @@ BEGIN {
 	$gap2seq_default = $ENV{'SHIMS_GAP2SEQ_EXEC'} || which('Gap2Seq.sh');
 
 	$gap2seq_timeout = 3600;
-
 	$bowtie2_screen_params = "--very-sensitive-local --n-ceil L,0,1 -I 0 -X 2501";
 	$cutadapt_params = "--mask-adapter --quiet --match-read-wildcards -q 10 --minimum-length 22";
 	$adapter_default = "AGATCGGAAGAGC";
@@ -470,13 +468,25 @@ sub main() {
 	my $besst_bowtie_index = "$output_dir/scaffolding";
 	my $besst_bowtie_output = "$output_dir/scaffolding.srt.bam";
 
+	my @besst_mergeable = ();
+
 	#align reads back to scaffolds, then use that alignment as input to BESST
 	#then fill gaps in BESST scaffolds with Gap2Seq
 
 	if (-e $scaffolds){
 		print "Scaffolding with illumina reads\n";
 		system("$bowtie2build_exec -q $scaffolds $besst_bowtie_index");
-		system("$bowtie2_exec -x $besst_bowtie_index -1 $utrim -2 $dtrim | $samtools_exec view -b -S - | $samtools_exec sort - >$besst_bowtie_output");
+
+		#workaround for bowtie2 only aligning the first fastq file when many are supplied
+		if (@utrimmed){
+			foreach my $i (0 .. $#utrimmed){
+				system("$bowtie2_exec -x $besst_bowtie_index -1 $utrimmed[$i] -2 $dtrimmed[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$besst_bowtie_output.$i");
+				push(@besst_mergeable, "$besst_bowtie_output.$i");
+			}
+		}
+		my $besst_inbams = join(" ", @besst_mergeable);
+		system("$samtools_exec merge $besst_bowtie_output $besst_inbams");
+		push(@temporary,@besst_mergeable);
 		system("$samtools_exec index $besst_bowtie_output");
 		system("$besst_exec -c $scaffolds -f $besst_bowtie_output -o $output_dir --orientation fr");
 		my $besst_scaffolds = "$output_dir/BESST_output/pass1/Scaffolds_pass1.fa";
@@ -490,7 +500,7 @@ sub main() {
 				alarm $gap2seq_timeout;
 				system("$gap2seq_exec -scaffolds $besst_scaffolds -filled $filled_gaps -reads $utrim,$dtrim");
 				alarm 0;
-		  };
+			};
 			if ($@){
 				if ($@ eq"alarm\n"){
 					print "$gap2seq_exec took more than $gap2seq_timeout seconds; that's too long\n"
@@ -535,10 +545,37 @@ sub main() {
 
 	my $scaffoldssrt = "$output_dir/final.srt.bam";
 	my $consed_dir = "$output_dir/consed";
+
 	system("$bowtie2build_exec -q $final $output_dir/final");
-	system("$bowtie2_exec -I 0 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -1 $ufilt -2 $dfilt | $samtools_exec view -b -S - | $samtools_exec sort -o $scaffoldssrt -");
+
+	my $singlebam = $scaffoldssrt.".single";
+	my $pairedbam = $scaffoldssrt.".paired";
+	my @mergeable = ();
+
+
+	#workaround for bowtie2 only aligning the first fastq file when many are supplied
+
+	if (@singles){
+		foreach my $i (0 .. $#singles){
+			system("$bowtie2_exec -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -U $singles[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$singlebam.$i");
+			push(@mergeable, "$singlebam.$i");
+		}
+	}
+
+	if (@upstream_mates){
+		foreach my $i (0 .. $#upstream_mates){
+			system("$bowtie2_exec -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -1 $upstream_mates[$i] -2 $downstream_mates[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$pairedbam.$i");
+			push(@mergeable, "$pairedbam.$i");
+		}
+	}
+
+	my $inbams = join(" ", @mergeable);
+
+  system("$samtools_exec merge $scaffoldssrt $inbams");
 	system("$samtools_exec index $scaffoldssrt");
 	system("$makeregions_exec $final");
+
+	push(@temporary,@mergeable);
 
 	#consed won't write to an exisitng directory, so wipe those out if they exist.
 
@@ -600,7 +637,6 @@ sub write_fasta_sequences ($$$){
 	return $n;
 }
 
-
 #loads a fasta file
 
 sub load_fasta_contigs ($) {
@@ -645,7 +681,6 @@ sub screen_pacbio ($$$$){
 			print $z "@"."$line[0]\n$line[9]\n+\n$line[10]\n";
 		}
 		close SAM;
-
 	}
 	close $z;
 	return $output;
