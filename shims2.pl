@@ -57,7 +57,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.1.28';
+	$VERSION = '1.1.29';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -354,7 +354,12 @@ sub main() {
 	my $trusted = "";
 	if (@finished){
 		@finished = split(/,/,join(',',@finished));
-		push(@finished, $left_end, $right_end);
+		if ($left_end){
+			push(@finished, $left_end);
+		}
+		if ($right_end){
+			push(@finished, $right_end);
+		}
 		$trusted = merge_fastas("trusted_contigs", $output_dir, \@finished);
 		$spades_arguments .= " --trusted-contigs $trusted";
 		push(@temporary, $trusted);
