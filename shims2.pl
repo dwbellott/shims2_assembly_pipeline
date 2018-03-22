@@ -57,7 +57,11 @@ use vars qw/@temporary/;
 
 
 BEGIN {
+<<<<<<< HEAD
 	$VERSION = '1.1.28';
+=======
+	$VERSION = '1.1.29';
+>>>>>>> 3d6c9d5a1d74b73a4227264a65c3cf5382a17256
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -354,7 +358,12 @@ sub main() {
 	my $trusted = "";
 	if (@finished){
 		@finished = split(/,/,join(',',@finished));
-		push(@finished, $left_end, $right_end);
+		if ($left_end){
+			push(@finished, $left_end);
+		}
+		if ($right_end){
+			push(@finished, $right_end);
+		}
 		$trusted = merge_fastas("trusted_contigs", $output_dir, \@finished);
 		$spades_arguments .= " --trusted-contigs $trusted";
 		push(@temporary, $trusted);
@@ -624,6 +633,7 @@ sub estimate_coverage_cutoff_from_vector ($$$) {
 #uses bioperl to write sequences in fasta format
 
 sub write_fasta_sequences ($$$){
+<<<<<<< HEAD
         my ($contigs, $file, $avg_read_len) = @_;
         my $out = Bio::SeqIO->new(-file => ">$file", '-format' => 'Fasta');
         my $n = 0;
@@ -635,6 +645,19 @@ sub write_fasta_sequences ($$$){
                 }
         }
         return $n;
+=======
+	my ($contigs, $file, $avg_read_len) = @_;
+	my $out = Bio::SeqIO->new(-file => ">$file", '-format' => 'Fasta');
+	my $n = 0;
+	foreach my $id (keys(%$contigs)){
+		#get rid of 128bp junk contigs
+		unless ($contigs->{$id}->length() < $avg_read_len){
+			$out->write_seq($contigs->{$id});
+			$n++
+		}
+	}
+	return $n;
+>>>>>>> 3d6c9d5a1d74b73a4227264a65c3cf5382a17256
 }
 
 #loads a fasta file
