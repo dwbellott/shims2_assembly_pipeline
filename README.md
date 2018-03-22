@@ -4,7 +4,7 @@ Pipeline for assembling large-insert clones (e.g. BACs, Fosmids) from Illumina d
 
 Software and documentation written by Daniel W. Bellott. For further discussion see:
 
-Bellott, Cho, et al. "Cost-effective, high-throughput, single-haplotype iterative mapping and sequencing for complex genomic structures", 2017.
+Bellott, Cho, et al. "[Cost-effective, high-throughput, single-haplotype iterative mapping and sequencing for complex genomic structures](http://dx.doi.org/10.1038/nprot.2018.019)", *Nature Protocols* **13** 787-809 (2018).
 
 ### Prerequisites
 
@@ -61,7 +61,7 @@ To install the cached perl modules.
 ```
 $ ./shims2.pl -h
 SHIMS Pipeline
-(Version: 1.1)
+(Version: 1.1.29)
 
 
 USAGE: ./shims2.pl -1 <upstream mates> -2 <downstream mates> -o <output directory> [optional arguments]
