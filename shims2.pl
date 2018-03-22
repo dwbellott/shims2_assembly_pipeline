@@ -57,11 +57,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-<<<<<<< HEAD
-	$VERSION = '1.1.28';
-=======
 	$VERSION = '1.1.29';
->>>>>>> 3d6c9d5a1d74b73a4227264a65c3cf5382a17256
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -633,19 +629,6 @@ sub estimate_coverage_cutoff_from_vector ($$$) {
 #uses bioperl to write sequences in fasta format
 
 sub write_fasta_sequences ($$$){
-<<<<<<< HEAD
-        my ($contigs, $file, $avg_read_len) = @_;
-        my $out = Bio::SeqIO->new(-file => ">$file", '-format' => 'Fasta');
-        my $n = 0;
-        foreach my $id (keys(%$contigs)){
-                #get rid of 128bp junk contigs
-                unless ($contigs->{$id}->length() < $avg_read_len){
-                        $out->write_seq($contigs->{$id});
-                        $n++
-                }
-        }
-        return $n;
-=======
 	my ($contigs, $file, $avg_read_len) = @_;
 	my $out = Bio::SeqIO->new(-file => ">$file", '-format' => 'Fasta');
 	my $n = 0;
@@ -657,7 +640,6 @@ sub write_fasta_sequences ($$$){
 		}
 	}
 	return $n;
->>>>>>> 3d6c9d5a1d74b73a4227264a65c3cf5382a17256
 }
 
 #loads a fasta file
@@ -946,7 +928,7 @@ Optional  arguments:
 		--adapter <Illumina adapter sequences>
 
 	Increasing Contiguity:
-		--pacbioroi <fastq sequences of pacbio reads of insert>>
+		--pacbioroi <fastq sequences of pacbio reads of insert>
 		--pacbiofsr <fastq sequences of pacbio filtered subreads>
 		--finished  <fasta sequences of finished neighbors>
 		--draft     <fasta sequences of draft neighbors>
