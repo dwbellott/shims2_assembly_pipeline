@@ -31,6 +31,9 @@ use vars qw/$makeregions_default/;
 use vars qw/$flash_default/;
 use vars qw/$besst_default/;
 use vars qw/$gap2seq_default/;
+use vars qw/$picardtools_default/;
+use vars qw/$gatk_default/;
+
 
 use vars qw/$spades_exec/;
 use vars qw/$samtools_exec/;
@@ -44,6 +47,8 @@ use vars qw/$makeregions_exec/;
 use vars qw/$flash_exec/;
 use vars qw/$besst_exec/;
 use vars qw/$gap2seq_exec/;
+use vars qw/$picardtools_exec/;
+use vars qw/$gatk_exec/;
 
 use vars qw/$gap2seq_timeout/;
 use vars qw/$bowtie2_screen_params/;
@@ -57,7 +62,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.1.29';
+	$VERSION = '1.1.30';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -98,6 +103,7 @@ sub autofinish ($$$$$);
 sub autofinish_status ($);
 sub make_result_contig ($$$$$);
 sub fasta_output_autofinished ($$);
+sub run_blasr_for_consed ($$$);
 sub main ();
 
 ############### Run the program
@@ -138,6 +144,8 @@ sub main() {
 		$flash,
 		$besst,
 		$gap2seq,
+		$picardtools,
+		$gatk,
 		$keeptemp,
 		$cleantemp);
 
@@ -171,6 +179,8 @@ sub main() {
 		'flash=s' => \$flash,
 		'besst=s' => \$besst,
 		'gap2seq=s' => \$gap2seq,
+		'picardtools=s' => \$picardtools,
+		'gatk=s' => \$gatk,
 		'keeptemp' => \$keeptemp,
 		'clean'	=> \$cleantemp)){
 		usage;
@@ -195,6 +205,8 @@ sub main() {
 	($flash_exec, $executables) = check_executable($flash, $flash_default, $executables);
 	($besst_exec, $executables) = check_executable($besst, $besst_default, $executables);
 	($gap2seq_exec, $executables) = check_executable($gap2seq, $gap2seq_default, $executables);
+	($picardtools_exec, $executables) = check_executable($picardtools, $picardtools_default, $executables);
+	($gatk_exec, $executables) = check_executable($gatk,$gatk_default,$executables);
 
 	@upstream_mates = split(/,/,join(',',@upstream_mates));
 	@downstream_mates = split(/,/,join(',',@downstream_mates));
@@ -555,6 +567,7 @@ sub main() {
 
 	my $singlebam = $scaffoldssrt.".single";
 	my $pairedbam = $scaffoldssrt.".paired";
+	my $pacbiobam = $scaffoldssrt.".pacbio";
 	my @mergeable = ();
 
 
@@ -562,22 +575,54 @@ sub main() {
 
 	if (@singles){
 		foreach my $i (0 .. $#singles){
-			system("$bowtie2_exec -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -U $singles[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$singlebam.$i");
+			system("$bowtie2_exec -I 251 -X 2501 --rdg 502,502 --rfg 502,502 --rg-id S$i --rg SM:S$i -x $output_dir/final -U $singles[$i] | $samtools_exec view -b -S -h - | $samtools_exec sort - >$singlebam.$i");
 			push(@mergeable, "$singlebam.$i");
 		}
 	}
 
 	if (@upstream_mates){
 		foreach my $i (0 .. $#upstream_mates){
-			system("$bowtie2_exec -I 251 -X 2501 --rdg 502,502 --rfg 502,502 -x $output_dir/final -1 $upstream_mates[$i] -2 $downstream_mates[$i] | $samtools_exec view -b -S - | $samtools_exec sort - >$pairedbam.$i");
+			system("$bowtie2_exec -I 251 -X 2501 --rdg 502,502 --rfg 502,502 --rg-id S$i --rg SM:S$i -x $output_dir/final -1 $upstream_mates[$i] -2 $downstream_mates[$i] | $samtools_exec view -b -S -h - | $samtools_exec sort - >$pairedbam.$i");
 			push(@mergeable, "$pairedbam.$i");
 		}
 	}
+
+	#use blasr to align PacBio/Nanopore reads, but shorten them to 1000bp for consed
+
+	if (-e $pacbioroifqgz){
+		push(@mergeable,&run_blasr_for_consed($pacbioroifqgz,$final,$pacbiobam."0"));
+	}
+	if ($pacbiofsrfqgz){
+		push(@mergeable,&run_blasr_for_consed($pacbiofsrfqgz,$final,$pacbiobam."1"));
+	}
+
+	#merge the bam files and index
 
 	my $inbams = join(" ", @mergeable);
 
   system("$samtools_exec merge $scaffoldssrt $inbams");
 	system("$samtools_exec index $scaffoldssrt");
+
+	system("$samtools_exec faidx $final");
+
+	#realign the indels so that the bam file is pleasant to look at
+
+	my $dictionary = $final;
+	$dictionary =~ s/\.[^\.]+$/.dict/;
+
+	system("$picardtools_exec CreateSequenceDictionary R=$final O=$dictionary");
+
+	my $intervals = $final;
+	$intervals =~ s/\.[^\.]+$/.intervals/;
+
+	system("$gatk_exec -T RealignerTargetCreator -R $final -I $scaffoldssrt -o $intervals --filter_bases_not_stored --defaultBaseQualities 10");
+
+	my $realignedbam = "$output_dir/final.srt.realigned.bam";
+
+	system("$gatk_exec -T IndelRealigner -R $final -targetIntervals $intervals -I $scaffoldssrt -o $realignedbam --filter_bases_not_stored --defaultBaseQualities 10");
+
+	system("samtools index $realignedbam");
+
 	system("$makeregions_exec $final");
 
 	push(@temporary,@mergeable);
@@ -587,7 +632,7 @@ sub main() {
 	if (-e $consed_dir) {
 		rmtree([ "$consed_dir" ]) || print "$! : for $consed_dir\n";
 	}
-	system("$consed_exec -bam2ace -bamFile $scaffoldssrt -regionsFile $output_dir/finalRegions.txt -dir $consed_dir");
+	system("$consed_exec -bam2ace -bamFile $realignedbam -regionsFile $output_dir/finalRegions.txt -dir $consed_dir");
 
 	my @bowties = glob("$output_dir"."*"."bt2");
 	push(@temporary,@bowties);
@@ -602,6 +647,162 @@ sub main() {
 
 }
 
+
+#parse blasr generated sam file to split reads for consed
+
+sub run_blasr_for_consed ($$$){
+	my $subread_length = 1000;
+	my ($pacbioreads,$contigs,$output);
+	open (BLASR, "$blasr_exec $pacbioreads $contigs -bestn 1 -sam |") || die "can't align $pacbioreads to $contigs with blasr\n";
+	open (SAMTOOLS, "| $samtools_exec view -b -S -h - | $samtools_exec sort -o $output -") || die "can't sort alignment with samtools\n";
+	while (<BLASR>){
+		if (m/^\@/){
+			print SAMTOOLS;
+		}else{
+			chomp;
+			#split the sam fields
+			my ($read_base_name,
+					$flag,
+					$rname,
+					$pos,
+					$mapq,
+					$cigar,
+					$rnext,
+					$pnext,
+					$tlen,
+					$seq,
+					$qual,
+					$info) = split(/\t/,$_);
+
+			if (defined($read_base_name) &&
+					defined($flag) &&
+					defined($rname) &&
+					defined($pos) &&
+					defined($mapq) &&
+					defined($cigar) &&
+					defined($rnext) &&
+					defined($pnext) &&
+					defined($tlen) &&
+					defined($seq) &&
+					defined($qual)){
+				#get the length of the sequence:
+				my $seqlen = length($seq);
+
+				#split the CIGAR string into its various operations
+				$cigar =~ s/(\D)/$1\t/g;
+				my @cigarettes = split(/\t/,$cigar);
+
+				#initialize a bunch of counters
+				my $sub_cigar = "";
+				my $alignment_length = 0;
+				my $read_count = 1;
+				my $sequence_length = 0;
+				my $reference_length = 0;
+				my $cumulative_seq = 0;
+				my $cumulative_ref = 0;
+
+				#loop over the CIGAR operations
+				foreach my $i (@cigarettes){
+					#get the number of bases and the operation
+					$i =~ m/(\d+)(\D)/;
+					my ($n,$o) = ($1,$2);
+					#initialize a counter
+					my $m = 0;
+					#loop over the bases in the operation
+					while ($n){
+						#if we hit the max subread length, its time to print
+						unless ($alignment_length < $subread_length || $seqlen - $cumulative_seq < $subread_length){
+							#append current cigar op and reset counter
+							if ($m){
+								$sub_cigar .= $m.$o;
+							}
+							$m = 0;
+							#print the current subread
+							if ($sub_cigar =~ m/[M=X]/){
+								my $qual_out;
+								if ($qual eq "*"){
+									$qual_out = $qual;
+								}else{
+									$qual_out = substr($qual,$cumulative_seq,$sequence_length);
+								}
+								print SAMTOOLS join("\t",(
+									$read_base_name."_".$read_count,
+									$flag,
+									$rname,
+									$pos+$cumulative_ref,
+									$mapq,
+									$sub_cigar,
+									$rnext,
+									$pnext,
+									$sequence_length,
+									substr($seq,$cumulative_seq,$sequence_length),
+									$qual_out,
+									$info))."\n";
+							}
+							#clear counters for next subread
+							$sub_cigar = "";
+							$cumulative_seq += $sequence_length;
+							$cumulative_ref += $reference_length;
+							$alignment_length = 0;
+							$read_count += 1;
+							$sequence_length = 0;
+							$reference_length = 0;
+						}
+						#decrement operation count and ...
+						$n--;
+						#increment the subread operation count and alignment length
+						$m++;
+						$alignment_length++;
+						#check that the operation is valid and
+						#increment the right counters
+						if ($o eq "M" || $o eq "=" || $o eq "X"){
+							$sequence_length++;
+							$reference_length++;
+						}elsif ($o eq "I" || $o eq "S"){
+							$sequence_length++;
+						}elsif ($o eq "D" || $o eq "N"){
+							$reference_length++;
+						}elsif ($o eq "H" || $o eq "P"){
+						}else{
+							die "invalid CIGAR operation: $i\n";
+						}
+					}
+					#add this op to the subread CIGAR string
+					$sub_cigar .= $m.$o
+				}
+				#print out the last subread
+				if ($sub_cigar =~ m/[M=X]/){
+					my $qual_out;
+					if ($qual eq "*"){
+						$qual_out = $qual;
+					}else{
+						$qual_out = substr($qual,$cumulative_seq,$sequence_length);
+					}
+					print SAMTOOLS join("\t",(
+						$read_base_name."_".$read_count,
+						$flag,
+						$rname,
+						$pos+$cumulative_ref,
+						$mapq,
+						$sub_cigar,
+						$rnext,
+						$pnext,
+						$sequence_length,
+						substr($seq,$cumulative_seq,$sequence_length),
+						$qual_out,
+						$info))."\n";
+				}
+			}
+		}
+	}
+	close BLASR;
+	close SAMTOOLS;
+	#system("blasr $preads[$i] $contigs -bestn 1 -sam | samtools view -b -S - | samtools sort - >$pacbio.$i");
+	return $output;
+}
+
+
+}
 
 #use bowtie and samtools to get the average depth across the vector sequence
 
@@ -949,6 +1150,8 @@ Optional  arguments:
 		--flash         <path to flash: $flash_exec>
 		--besst         <path to besst: $besst_exec>
 		--gap2seq       <path to gap2seq: $gap2seq_exec>
+		--picardtools   <path to picardtools: $picardtools_exec>
+		--gatk					<path to gatk: $gatk_exec>
 /;
 
 	return 1;
