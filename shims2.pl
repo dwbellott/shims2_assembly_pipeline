@@ -33,7 +33,7 @@ use vars qw/$besst_default/;
 use vars qw/$gap2seq_default/;
 use vars qw/$picardtools_default/;
 use vars qw/$gatk_default/;
-
+use vars qw/$java_default/;
 
 use vars qw/$spades_exec/;
 use vars qw/$samtools_exec/;
@@ -47,8 +47,9 @@ use vars qw/$makeregions_exec/;
 use vars qw/$flash_exec/;
 use vars qw/$besst_exec/;
 use vars qw/$gap2seq_exec/;
-use vars qw/$picardtools_exec/;
+use vars qw/$picardtools_jar/;
 use vars qw/$gatk_exec/;
+use vars qw/$java_exec/;
 
 use vars qw/$gap2seq_timeout/;
 use vars qw/$bowtie2_screen_params/;
@@ -75,6 +76,9 @@ BEGIN {
 	$flash_default = $ENV{'SHIMS_FLASH_EXEC'} || which('flash');
 	$besst_default = $ENV{'SHIMS_BESST_EXEC'} || which('runBESST');
 	$gap2seq_default = $ENV{'SHIMS_GAP2SEQ_EXEC'} || which('Gap2Seq.sh');
+	$picardtools_default = $ENV{'SHIMS_PICARDTOOLS_JAR'} || '/usr/local/share/picard-tools/picard.jar';
+	$gatk_default = $ENV{'SHIMS_GATK_EXEC'} || which('gatk');
+	$java_default = $ENV{'SHIMS_JAVA_EXEC'} || which('java');
 
 	$gap2seq_timeout = 3600;
 	$bowtie2_screen_params = "--very-sensitive-local --n-ceil L,0,1 -I 0 -X 2501";
@@ -146,6 +150,7 @@ sub main() {
 		$gap2seq,
 		$picardtools,
 		$gatk,
+		$java,
 		$keeptemp,
 		$cleantemp);
 
@@ -181,6 +186,7 @@ sub main() {
 		'gap2seq=s' => \$gap2seq,
 		'picardtools=s' => \$picardtools,
 		'gatk=s' => \$gatk,
+		'java=s' => \$java,
 		'keeptemp' => \$keeptemp,
 		'clean'	=> \$cleantemp)){
 		usage;
@@ -205,8 +211,18 @@ sub main() {
 	($flash_exec, $executables) = check_executable($flash, $flash_default, $executables);
 	($besst_exec, $executables) = check_executable($besst, $besst_default, $executables);
 	($gap2seq_exec, $executables) = check_executable($gap2seq, $gap2seq_default, $executables);
-	($picardtools_exec, $executables) = check_executable($picardtools, $picardtools_default, $executables);
 	($gatk_exec, $executables) = check_executable($gatk,$gatk_default,$executables);
+	($java_exec, $executables) = check_executable($java,$java_default,$executables);
+
+	if (-e $picardtools){
+		$picardtools_jar = $picardtools;
+	}elsif (-e $picardtools_default){
+		$picardtools_jar = $picardtools_default;
+	}else{
+		$executables++;
+	}
+
+
 
 	@upstream_mates = split(/,/,join(',',@upstream_mates));
 	@downstream_mates = split(/,/,join(',',@downstream_mates));
@@ -610,7 +626,7 @@ sub main() {
 	my $dictionary = $final;
 	$dictionary =~ s/\.[^\.]+$/.dict/;
 
-	system("$picardtools_exec CreateSequenceDictionary R=$final O=$dictionary");
+	system("$java_exec -jar $picardtools_jar CreateSequenceDictionary R=$final O=$dictionary");
 
 	my $intervals = $final;
 	$intervals =~ s/\.[^\.]+$/.intervals/;
@@ -799,9 +815,6 @@ sub run_blasr_for_consed ($$$){
 	close SAMTOOLS;
 	#system("blasr $preads[$i] $contigs -bestn 1 -sam | samtools view -b -S - | samtools sort - >$pacbio.$i");
 	return $output;
-}
-
-
 }
 
 #use bowtie and samtools to get the average depth across the vector sequence
@@ -1086,6 +1099,9 @@ Changing Executables:
 	--flash         <path to flash: $flash_exec>
 	--besst         <path to besst: $besst_exec>
 	--gap2seq       <path to gap2seq: $gap2seq_exec>
+	--picardtools   <path to picardtools: $picardtools_jar>
+	--gatk          <path to gatk: $gatk_exec>
+	--java          <path to java: $java_exec>
 
 To make the current executables the default:
 
@@ -1101,7 +1117,11 @@ export SHIMS_MAKEREGIONS_EXEC=$makeregions_exec
 export SHIMS_FLASH_EXEC=$flash_exec
 export SHIMS_BESST_EXEC=$besst_exec
 export SHIMS_GAP2SEQ_EXEC=$gap2seq_exec
-	/;
+export SHIMS_PICARDTOOLS_JAR=$picardtools_jar
+export SHIMS_GATK_EXEC=$gatk_exec
+export SHIMS_JAVA_EXEC=$java_exec
+
+/;
 
 	return 1;
 }
@@ -1150,8 +1170,9 @@ Optional  arguments:
 		--flash         <path to flash: $flash_exec>
 		--besst         <path to besst: $besst_exec>
 		--gap2seq       <path to gap2seq: $gap2seq_exec>
-		--picardtools   <path to picardtools: $picardtools_exec>
-		--gatk					<path to gatk: $gatk_exec>
+		--picardtools   <path to picardtools: $picardtools_jar>
+		--gatk          <path to gatk: $gatk_exec>
+		--java          <path to java: $java_exec>
 /;
 
 	return 1;
