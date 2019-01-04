@@ -3,6 +3,7 @@ requires 'strict', '1.04';
 requires 'Cwd', '3.62';
 requires 'File::Which', '1.21';
 requires 'File::Path', '2.14';
+requires 'File::Find', '1.34';
 requires 'DateTime', '1.43';
 requires 'Getopt::Long', '2.5';
 requires 'Bio::Root::Version', '1.0';
