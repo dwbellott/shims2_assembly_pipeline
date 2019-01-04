@@ -64,7 +64,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.2.2';
+	$VERSION = '1.3.0';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -428,6 +428,39 @@ sub main() {
 
 	if ($cov_cutoff){
 		$assembly_command .= " --cov-cutoff $cov_cutoff";
+	}else{
+		$assembly_command .= " --cov-cutoff auto";
+	}
+
+	#check possible kmer sizes
+
+	my $spades_maxk;
+	my $spades_kmer_message = 0;
+	my $spades_kmer_step = 28;
+	my @kmer_sizes = (21,33,55,77,99,127);
+
+	open (SPADESERR, "$spades_exec -h 2>&1 >/dev/null |") || die "can't check usage for $spades_exec\n";
+	while (<SPADESERR>){
+		if ($spades_maxk){
+
+		}elsif ($spades_kmer_message){
+			m/less than (\d+)\)/;
+			$spades_maxk = $1;
+		}elsif (m/comma-separated list of k-mer sizes/){
+			$spades_kmer_message = 1;
+		}
+	}
+	close SPADESERR;
+
+	if ($spades_maxk > $avg_read){
+		$spades_maxk = $avg_read;
+	}
+
+	if ($spades_maxk > 127){
+		while($kmer_sizes[-1] + $spades_kmer_step < $spades_maxk){
+			push(@kmer_sizes, $kmer_sizes[-1] + $spades_kmer_step);
+		}
+		$assembly_command .= " -k ".join(',',@kmer_sizes);
 	}
 
 	#let spades do it's thing
