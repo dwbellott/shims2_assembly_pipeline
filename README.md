@@ -61,7 +61,7 @@ To install the cached perl modules.
 ```
 $ ./shims2.pl -h
 SHIMS Pipeline
-(Version: 1.1.29)
+(Version: 1.3.1)
 
 
 USAGE: ./shims2.pl -1 <upstream mates> -2 <downstream mates> -o <output directory> [optional arguments]
