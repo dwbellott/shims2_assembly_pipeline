@@ -64,7 +64,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.3.0';
+	$VERSION = '1.3.1';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -106,7 +106,7 @@ sub overlap_mates ($$$$$$);
 sub estimate_coverage_cutoff_from_vector ($$$);
 sub autofinish ($$$$$);
 sub autofinish_status ($);
-sub make_result_contig ($$$$$);
+sub make_result_contig ($$$$$$);
 sub fasta_output_autofinished ($$);
 sub run_blasr_for_consed ($$$);
 sub wanted ();
@@ -1294,12 +1294,12 @@ sub autofinish ($$$$$) {
 		if ($bestleft->{'strand'} eq "+" && $bestright->{'strand'} eq "-" && $bestleft->{'tstart'} < $bestright->{'tend'}){
 			### forward case
 			print "#autofinisher: contig is in forward orientation\n";
-			$r->{$id} = make_result_contig($c->{$id}, 1, 1, 1, 1);
+			$r->{$id} = make_result_contig($c->{$id}, 1, 1, 1, 1, 1);
 			return $r;
 		}elsif ($bestleft->{'strand'} eq "-" && $bestright->{'strand'} eq "+" && $bestright->{'tstart'} < $bestleft->{'tend'}){
 			### reverse case
 			print "#autofinisher: contig is in reverse orientation\n";
-			$r->{$id} = make_result_contig($c->{$id}, 1, 1, 1, -1);
+			$r->{$id} = make_result_contig($c->{$id}, 1, 1, 1, -1, 1);
 			return $r;
 		}else{
 			### bad case -- lets toss out the lower scoring end
@@ -1319,7 +1319,7 @@ sub autofinish ($$$$$) {
 	### First lets dump all the contigs into the result hash, but mark them as unordered and unoriented
 
 	foreach my $id (keys(%{$c})){
-		$r->{$id} = make_result_contig($c->{$id}, 0, 0, 0, 1);
+		$r->{$id} = make_result_contig($c->{$id}, 0, 0, 0, 1, 0);
 	}
 
 	### Now lets see if the end matches let us find the first and last contig
@@ -1330,6 +1330,7 @@ sub autofinish ($$$$$) {
 		$r->{$first_id}->{'number'} = 1;
 		$r->{$first_id}->{'ordered'} = 1;
 		$r->{$first_id}->{'oriented'} = 1;
+		$r->{$first_id}->{'used'} = 1;
 		if ($bestleft->{'strand'} eq '+'){
 		}else{
 			$r->{$first_id}->{'strand'} = -1
@@ -1344,6 +1345,7 @@ sub autofinish ($$$$$) {
 		$r->{$last_id}->{'number'} = -1;
 		$r->{$last_id}->{'ordered'} = 1;
 		$r->{$last_id}->{'oriented'} = 1;
+		$r->{$first_id}->{'used'} = 1;
 		if ($bestright->{'strand'} eq '+'){
 			$r->{$last_id}->{'strand'} = -1
 		}else{
@@ -1418,11 +1420,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
 							if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$innerleft_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-								if ($r->{$contig}->{'ordered'} == 1){
+								if ($r->{$contig}->{'used'} == 1){
 								}else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
 									$r->{$contig}->{'number'} = $r->{$innerleft_id}->{'number'} + 1;
 									$r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
 									if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
 										$r->{$contig}->{'oriented'} = 1;
 										$r->{$contig}->{'strand'} = 1;
@@ -1440,11 +1443,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
 							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerleft_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-								if ($r->{$contig}->{'ordered'} == 1){
+								if ($r->{$contig}->{'used'} == 1){
 								}else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
 									$r->{$contig}->{'number'} = $r->{$innerleft_id}->{'number'} + 1;
 									$r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
 									if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
 										$r->{$contig}->{'oriented'} = 1;
 										$r->{$contig}->{'strand'} = -1;
@@ -1465,11 +1469,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
             	if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerleft_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-              	if ($r->{$contig}->{'ordered'} == 1){
+              	if ($r->{$contig}->{'used'} == 1){
                 }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
 	                $r->{$contig}->{'number'} = $r->{$innerleft_id}->{'number'} + 1;
                   $r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
                   if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
                   	$r->{$contig}->{'oriented'} = 1;
                     $r->{$contig}->{'strand'} = -1;
@@ -1487,11 +1492,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
             	if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$innerleft_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-                if ($r->{$contig}->{'ordered'} == 1){
+                if ($r->{$contig}->{'used'} == 1){
                 }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
                   $r->{$contig}->{'number'} = $r->{$innerleft_id}->{'number'} + 1;
                   $r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
                   if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
                   	$r->{$contig}->{'oriented'} = 1;
                     $r->{$contig}->{'strand'} = 1;
@@ -1517,7 +1523,7 @@ sub autofinish ($$$$$) {
 		}elsif ($innerright_id){
 
 			### start on the right side, going left
-			print "#autofinisher: trying to extend inner left contig $innerright_id to the left\n";
+			print "#autofinisher: trying to extend inner right contig $innerright_id to the left\n";
 			my $nextright_id;
 			my @peps = sort {$matrix->{$innerright_id}->{$b}->{'score'} <=> $matrix->{$innerright_id}->{$a}->{'score'}} keys(%{$matrix->{$innerright_id}});
 			foreach my $pep (@peps){
@@ -1529,11 +1535,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
 							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerright_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-								if ($r->{$contig}->{'ordered'} == 1){
+								if ($r->{$contig}->{'used'} == 1){
 								}else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
 									$r->{$contig}->{'number'} = $r->{$innerright_id}->{'number'} - 1;
 									$r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
 									if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
 										$r->{$contig}->{'oriented'} = 1;
 										$r->{$contig}->{'strand'} = 1;
@@ -1551,11 +1558,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
 							if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$innerright_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-								if ($r->{$contig}->{'ordered'} == 1){
+								if ($r->{$contig}->{'used'} == 1){
 								}else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
 									$r->{$contig}->{'number'} = $r->{$innerright_id}->{'number'} - 1;
 									$r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
 									if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
 										$r->{$contig}->{'oriented'} = 1;
 										$r->{$contig}->{'strand'} = -1;
@@ -1577,11 +1585,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
                 if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$innerright_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-                	if ($r->{$contig}->{'ordered'} == 1){
+                	if ($r->{$contig}->{'used'} == 1){
 	                }else{
 										print "#autofinisher: peptide $pep bridges to contig $contig\n";
                     $r->{$contig}->{'number'} = $r->{$innerright_id}->{'number'} - 1;
                     $r->{$contig}->{'ordered'} = 1;
+										$r->{$contig}->{'used'} = 1;
                     if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
                     	$r->{$contig}->{'oriented'} = 1;
                       $r->{$contig}->{'strand'} = -1;
@@ -1599,11 +1608,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
                 if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$innerright_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-                if ($r->{$contig}->{'ordered'} == 1){
+                if ($r->{$contig}->{'used'} == 1){
                 }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
                   $r->{$contig}->{'number'} = $r->{$innerright_id}->{'number'} - 1;
                   $r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
 	                if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
                   	$r->{$contig}->{'oriented'} = 1;
                     $r->{$contig}->{'strand'} = 1;
@@ -1641,11 +1651,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
 							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleright_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-								if ($r->{$contig}->{'ordered'} == 1){
+								if ($r->{$contig}->{'used'} == 1){
 								}else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
 									$m->{$contig}->{'number'} = $m->{$middleright_id}->{'number'} - 1;
 									$r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
 									if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
 										$r->{$contig}->{'oriented'} = 1;
 										$r->{$contig}->{'strand'} = 1;
@@ -1663,11 +1674,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
 							if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$middleright_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-								if ($r->{$contig}->{'ordered'} == 1){
+								if ($r->{$contig}->{'used'} == 1){
 								}else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
 									$m->{$contig}->{'number'} = $m->{$middleright_id}->{'number'} - 1;
 									$r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
 									if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
 										$r->{$contig}->{'oriented'} = 1;
 										$r->{$contig}->{'strand'} = -1;
@@ -1689,11 +1701,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
               if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$middleright_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-	              if ($r->{$contig}->{'ordered'} == 1){
+	              if ($r->{$contig}->{'used'} == 1){
                 }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
                   $m->{$contig}->{'number'} = $m->{$middleright_id}->{'number'} - 1;
                   $r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
                   if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
                     $r->{$contig}->{'oriented'} = 1;
                     $r->{$contig}->{'strand'} = -1;
@@ -1711,11 +1724,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
               if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleright_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-                if ($r->{$contig}->{'ordered'} == 1){
+                if ($r->{$contig}->{'used'} == 1){
                 }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
                   $m->{$contig}->{'number'} = $m->{$middleright_id}->{'number'} - 1;
                   $r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
                   if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
                     $r->{$contig}->{'oriented'} = 1;
                     $r->{$contig}->{'strand'} = 1;
@@ -1752,11 +1766,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
 							if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$middleleft_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-								if ($r->{$contig}->{'ordered'} == 1){
+								if ($r->{$contig}->{'used'} == 1){
 								}else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
 									$m->{$contig}->{'number'} = $m->{$middleleft_id}->{'number'} + 1;
 									$r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
 									if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
 										$r->{$contig}->{'oriented'} = 1;
 										$r->{$contig}->{'strand'} = 1;
@@ -1774,11 +1789,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
 							if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleleft_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-								if ($r->{$contig}->{'ordered'} == 1){
+								if ($r->{$contig}->{'used'} == 1){
 								}else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
 									$m->{$contig}->{'number'} = $m->{$middleleft_id}->{'number'} + 1;
 									$r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
 									if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
 										$r->{$contig}->{'oriented'} = 1;
 										$r->{$contig}->{'strand'} = -1;
@@ -1799,11 +1815,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$b}->{$pep}->{'aa'} <=> $matrix->{$a}->{$pep}->{'aa'}} (keys(%{$r}))){
               if ($matrix->{$contig}->{$pep}->{'aa'} > 0 && $matrix->{$contig}->{$pep}->{'aa'} < $matrix->{$middleleft_id}->{$pep}->{'aa'}){
 								### look for the previous contig on the peptide
-                if ($r->{$contig}->{'ordered'} == 1){
+                if ($r->{$contig}->{'used'} == 1){
                 }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
                   $m->{$contig}->{'number'} = $m->{$middleleft_id}->{'number'} + 1;
                   $r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
                   if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
                     $r->{$contig}->{'oriented'} = 1;
                     $r->{$contig}->{'strand'} = -1;
@@ -1821,11 +1838,12 @@ sub autofinish ($$$$$) {
 						foreach my $contig (sort {$matrix->{$a}->{$pep}->{'aa'} <=> $matrix->{$b}->{$pep}->{'aa'}} (keys(%{$r}))){
               if ($matrix->{$contig}->{$pep}->{'aa'} > $matrix->{$middleleft_id}->{$pep}->{'aa'}){
 								### look for the next contig on the peptide
-                if ($r->{$contig}->{'ordered'} == 1){
+                if ($r->{$contig}->{'used'} == 1){
                 }else{
 									print "#autofinisher: peptide $pep bridges to contig $contig\n";
                   $m->{$contig}->{'number'} = $m->{$middleleft_id}->{'number'} + 1;
                   $r->{$contig}->{'ordered'} = 1;
+									$r->{$contig}->{'used'} = 1;
                   if ($matrix->{$contig}->{$pep}->{'strand'} == 1){
                     $r->{$contig}->{'oriented'} = 1;
                     $r->{$contig}->{'strand'} = 1;
@@ -1877,6 +1895,7 @@ sub autofinish ($$$$$) {
 					$middleleft_id = $contig;
 					$m->{$contig}->{'number'} = "0";
 					$r->{$contig}->{'ordered'} = 1;
+					$r->{$contig}->{'used'} = 1;
 					$r->{$contig}->{'oriented'} = 1;
 					$r->{$contig}->{'strand'} = 1;
 					$r->{$contig}->{'number'} = 0;
@@ -1938,14 +1957,15 @@ sub autofinish_status ($) {
 
 #assign order and orientation to contig for autofinisher
 
-sub make_result_contig ($$$$$) {
-	my ($bioseq, $num, $ord, $ori, $str) = @_;
+sub make_result_contig ($$$$$$) {
+	my ($bioseq, $num, $ord, $ori, $str, $used) = @_;
 	my $x = {
 		'bioseq'	=>	$bioseq,
 		'number'	=>	$num,
 		'ordered'	=>	$ord,
 		'oriented'	=>	$ori,
-		'strand'	=>	$str
+		'strand'	=>	$str,
+		'used' => $used
 		};
 	return $x;
 }
