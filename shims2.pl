@@ -64,7 +64,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.2.1';
+	$VERSION = '1.2.2';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -520,7 +520,7 @@ sub main() {
 			}
 		}
 		my $besst_inbams = join(" ", @besst_mergeable);
-		system("$samtools_exec merge $besst_bowtie_output $besst_inbams");
+		system("$samtools_exec merge -f $besst_bowtie_output $besst_inbams");
 		push(@temporary,@besst_mergeable);
 		system("$samtools_exec index $besst_bowtie_output");
 		system("$besst_exec -c $scaffolds -f $besst_bowtie_output -o $output_dir -orientation fr");
@@ -618,7 +618,7 @@ sub main() {
 
 	my $inbams = join(" ", @mergeable);
 
-  system("$samtools_exec merge $scaffoldssrt $inbams");
+  system("$samtools_exec merge -f $scaffoldssrt $inbams");
 	system("$samtools_exec index $scaffoldssrt");
 
 	system("$samtools_exec faidx $final");
