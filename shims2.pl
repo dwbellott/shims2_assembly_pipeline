@@ -64,7 +64,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.2.0';
+	$VERSION = '1.2.1';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
@@ -628,14 +628,26 @@ sub main() {
 	my $dictionary = $final;
 	$dictionary =~ s/\.[^\.]+$/.dict/;
 
+	if (-e $dictionary) {
+		rmtree([ "$dictionary" ]) || print "$! : for $dictionary\n";
+	}
+
 	system("$java_exec -jar $picardtools_jar CreateSequenceDictionary R=$final O=$dictionary");
 
 	my $intervals = $final;
 	$intervals =~ s/\.[^\.]+$/.intervals/;
 
+	if (-e $intervals) {
+		rmtree([ "$intervals" ]) || print "$! : for $intervals\n";
+	}
+
 	system("$gatk_exec -T RealignerTargetCreator -R $final -I $scaffoldssrt -o $intervals --filter_bases_not_stored --defaultBaseQualities 10");
 
 	my $realignedbam = "$output_dir/final.srt.realigned.bam";
+
+	if (-e $realignedbam) {
+		rmtree([ "$realignedbam" ]) || print "$! : for $realignedbam\n";
+	}
 
 	system("$gatk_exec -T IndelRealigner -R $final -targetIntervals $intervals -I $scaffoldssrt -o $realignedbam --filter_bases_not_stored --defaultBaseQualities 10");
 
