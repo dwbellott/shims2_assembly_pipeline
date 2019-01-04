@@ -9,6 +9,7 @@ use Cwd;
 use Cwd 'abs_path';
 use File::Which;
 use File::Path 'rmtree';
+use File::Find;
 use DateTime;
 use Getopt::Long;
 use Bio::Seq;
@@ -108,6 +109,7 @@ sub autofinish_status ($);
 sub make_result_contig ($$$$$);
 sub fasta_output_autofinished ($$);
 sub run_blasr_for_consed ($$$);
+sub wanted ();
 sub main ();
 
 ############### Run the program
@@ -659,10 +661,23 @@ sub main() {
 		rmtree([ @temporary ]);
 	}
 
+	#change permissions so others in your group can work on the assembly
+
+	find(\&wanted,$output_dir);
+
 	#we're all done!
 
 }
 
+
+#change permissions to allow:
+# Directories 0775
+# Files 0664
+
+sub wanted () {
+	my $permissions = -d $File::Find::name ? 0775 : 0664;
+	chmod $permissions, $File::Find::name;
+}
 
 #parse blasr generated sam file to split reads for consed
 
