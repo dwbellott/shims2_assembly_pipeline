@@ -64,7 +64,7 @@ use vars qw/@temporary/;
 
 
 BEGIN {
-	$VERSION = '1.1.30';
+	$VERSION = '1.2.0';
 	$spades_default = $ENV{'SHIMS_SPADES_EXEC'} || which('spades.py');
 	$samtools_default = $ENV{'SHIMS_SAMTOOLS_EXEC'} || which('samtools');
 	$bowtie2build_default = $ENV{'SHIMS_BOWTIE2BUILD_EXEC'} || which('bowtie2-build');
