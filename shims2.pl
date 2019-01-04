@@ -521,7 +521,7 @@ sub main() {
 		system("$samtools_exec merge $besst_bowtie_output $besst_inbams");
 		push(@temporary,@besst_mergeable);
 		system("$samtools_exec index $besst_bowtie_output");
-		system("$besst_exec -c $scaffolds -f $besst_bowtie_output -o $output_dir --orientation fr");
+		system("$besst_exec -c $scaffolds -f $besst_bowtie_output -o $output_dir -orientation fr");
 		my $besst_scaffolds = "$output_dir/BESST_output/pass1/Scaffolds_pass1.fa";
 		my $filled_gaps = "$output_dir/filled_gaps.fa";
 		if (-e $besst_scaffolds){
