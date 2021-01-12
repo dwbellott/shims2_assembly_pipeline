@@ -20,17 +20,8 @@ Install the following tools used by the pipeline:
 - [Gap2seq](https://www.cs.helsinki.fi/u/lmsalmel/Gap2Seq/)
 - [blat](http://hgdownload.soe.ucsc.edu/downloads.html#source_downloads)
 - [Consed](http://www.phrap.org/consed/consed.html#howToGet)
-
-If you use [Docker](https://www.docker.com/), you may be pleased to learn that several of these tools are available as [BioContainers](https://biocontainers.pro/#documentation):
-
-- [cutadapt](https://quay.io/repository/biocontainers/cutadapt)
-- [bowtie2](https://quay.io/repository/biocontainers/bowtie2)
-- [SAMtools](https://quay.io/repository/biocontainers/samtools)
-- [SPAdes](https://quay.io/repository/biocontainers/spades)
-- [blasr](https://quay.io/repository/biocontainers/blasr)
-- [BESST](https://quay.io/repository/biocontainers/BESST)
-- [Gap2seq](https://quay.io/repository/biocontainers/gap2seq)
-- [blat](https://quay.io/repository/biocontainers/blat)
+- [GATK](https://github.com/broadinstitute/gatk/releases)
+- [Picard](https://github.com/broadinstitute/picard/releases/tag/2.24.0)
 
 Your computer should already have perl installed
 
@@ -61,10 +52,10 @@ To install the cached perl modules.
 ```
 $ ./shims2.pl -h
 SHIMS Pipeline
-(Version: 1.3.1)
+(Version: 1.3.2)
 
 
-USAGE: ./shims2.pl -1 <upstream mates> -2 <downstream mates> -o <output directory> [optional arguments]
+USAGE: /home/bellott/perlscripts/shims2.pl -1 <upstream mates> -2 <downstream mates> -o <output directory> [optional arguments]
 
 -1 and -2 may be comma spearated lists of files containing reads in fastq or fastq.gz
 
@@ -81,7 +72,7 @@ Optional  arguments:
 		--adapter <Illumina adapter sequences>
 
 	Increasing Contiguity:
-		--pacbioroi <fastq sequences of pacbio reads of insert>>
+		--pacbioroi <fastq sequences of pacbio reads of insert>
 		--pacbiofsr <fastq sequences of pacbio filtered subreads>
 		--finished  <fasta sequences of finished neighbors>
 		--draft     <fasta sequences of draft neighbors>
@@ -90,16 +81,19 @@ Optional  arguments:
 		--peptides  <fasta sequences of peptides>
 
 	Changing Executables:
-		--spades        <path to SPAdes: >
-		--samtools      <path to samtools: >
-		--bowtie2build  <path to bowtie2-build: >
-		--bowtie2       <path to bowtie2: >
-		--blat          <path to blat: >
-		--cutadapt      <path to cutadapt: >
-		--blasr         <path to blasr: >
-		--consed        <path to consed: >
-		--makeregions   <path to consed's makeRegionsFile.perl: >
-		--flash         <path to flash: >
-		--besst         <path to besst: >
-		--gap2seq       <path to gap2seq: >
+		--spades        <path to SPAdes: /home/bellott/bin/spades.py>
+		--samtools      <path to samtools: /usr/local/bin/samtools>
+		--bowtie2build  <path to bowtie2-build: /usr/bin/bowtie2-build>
+		--bowtie2       <path to bowtie2: /usr/local/bin/bowtie2>
+		--blat          <path to blat: /usr/bin/blat>
+		--cutadapt      <path to cutadapt: /usr/local/bin/python3.6/cutadapt>
+		--blasr         <path to blasr: /home/bellott/miniconda3/bin/blasr>
+		--consed        <path to consed: /usr/local/genome/bin/consed>
+		--makeregions   <path to consed's makeRegionsFile.perl: /usr/local/genome/bin/makeRegionsFile.perl>
+		--flash         <path to flash: /home/bellott/bin/flash>
+		--besst         <path to besst: /home/bellott/bin/BESST/runBESST>
+		--gap2seq       <path to gap2seq: /usr/local/bin/Gap2Seq.sh>
+		--picardtools   <path to picardtools: /usr/local/share/picard-tools/picard.jar>
+		--gatk          <path to gatk: /usr/local/bin/gatk>
+		--java          <path to java: /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java>
   ```
