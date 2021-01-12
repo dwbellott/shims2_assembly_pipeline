@@ -10,18 +10,18 @@ Bellott, Cho, et al. "[Cost-effective, high-throughput, single-haplotype iterati
 
 Install the following tools used by the pipeline:
 
-- [cutadapt](https://cutadapt.readthedocs.io/en/stable/installation.html)
-- [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2)
-- [SAMtools](http://www.htslib.org/download/)
-- [flash](https://ccb.jhu.edu/software/FLASH/)
-- [SPAdes](http://cab.spbu.ru/files/release3.10.1/manual.html#sec2)
-- [blasr](https://github.com/PacificBiosciences/blasr/wiki/Blasr-Installation-Qs-&-As)
-- [BESST](https://github.com/ksahlin/BESST/blob/master/docs/INSTALL.md)
-- [Gap2seq](https://www.cs.helsinki.fi/u/lmsalmel/Gap2Seq/)
-- [blat](http://hgdownload.soe.ucsc.edu/downloads.html#source_downloads)
-- [Consed](http://www.phrap.org/consed/consed.html#howToGet)
-- [GATK](https://github.com/broadinstitute/gatk/releases)
-- [Picard](https://github.com/broadinstitute/picard/releases/tag/2.24.0)
+- [cutadapt](https://cutadapt.readthedocs.io/en/stable/installation.html)	(version 1.18)
+- [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) (version 2.3.4.1)
+- [SAMtools](http://www.htslib.org/download/) (version 1.9)
+- [flash](https://ccb.jhu.edu/software/FLASH/) (version 1.2.11)
+- [SPAdes](http://cab.spbu.ru/files/release3.10.1/manual.html#sec2) (version 3.14.1)
+- [blasr](https://github.com/PacificBiosciences/blasr/wiki/Blasr-Installation-Qs-&-As) (version 5.3.2)
+- [BESST](https://github.com/ksahlin/BESST/blob/master/docs/INSTALL.md) (version 2.2.8)
+- [Gap2seq](https://www.cs.helsinki.fi/u/lmsalmel/Gap2Seq/) (version 2.0)
+- [blat](http://hgdownload.soe.ucsc.edu/downloads.html#source_downloads) (version 34)
+- [Consed](http://www.phrap.org/consed/consed.html#howToGet) (version 29.0)
+- [GATK](https://github.com/broadinstitute/gatk/releases) (version 3.7-0-gcfedb67)
+- [Picard](https://github.com/broadinstitute/picard/releases/tag/2.24.0) (version 2.2.8)
 
 Your computer should already have perl installed
 
